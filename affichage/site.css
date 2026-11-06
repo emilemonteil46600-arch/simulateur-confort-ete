@@ -241,3 +241,69 @@ body.appli { background: var(--fond); }
 }
 .exemples > summary { cursor: pointer; }
 .exemples ul { margin: 6px 0 0 18px; padding: 0; font-size: .86rem; }
+
+/* ==========================================================
+   LE LABO ANIMÉ (atelier) : la chaleur qui traverse le mur
+   Échelle de température divergente : froid (bleu) → neutre → chaud (rouge).
+   ========================================================== */
+:root { --chaleur-froid: #2f6db5; --chaleur-neutre: #f4f1ea; --chaleur-chaud: #c8431b; }
+@media (prefers-color-scheme: dark) { :root { --chaleur-froid: #3a7cc9; --chaleur-neutre: #3a3d44; --chaleur-chaud: #e0632e; } }
+.labo { margin-bottom: 16px; }
+.labo-tete { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.labo-tete h2 { margin: 0; }
+.labo-tete > div:first-child { flex: 1 1 380px; min-width: 0; }
+.labo-horloge { display: flex; flex-direction: column; align-items: flex-end; background: var(--surface-2); border: 1px solid var(--bord); border-radius: 12px; padding: 8px 14px; min-width: 150px; }
+.labo-horloge span { font-size: .78rem; color: var(--encre-2); }
+.labo-horloge b { font-size: 1.7rem; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -.01em; }
+.labo-palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0 8px; }
+.puce-couche { font: inherit; font-size: .8rem; font-weight: 600; border: 1px solid var(--bord-fort); background: var(--surface); color: var(--encre); border-radius: 99px; padding: 4px 10px; cursor: pointer; }
+.puce-couche:hover { border-color: var(--accent); color: var(--accent); }
+.labo-scene { border-radius: 12px; overflow: hidden; border: 1px solid var(--bord); background: var(--surface-2); touch-action: pan-y; }
+.labo-svg { display: block; width: 100%; height: auto; user-select: none; }
+.labo-air { opacity: .55; }
+.labo-couche { fill: none; stroke: var(--encre); stroke-opacity: .45; stroke-width: 1; }
+.labo-couche.isolant { stroke-dasharray: 5 4; }
+.labo-couche.choisie { stroke: var(--accent); stroke-opacity: 1; stroke-width: 2.5; }
+.labo-poignee { cursor: grab; }
+.labo-poignee rect { fill: var(--surface); stroke: var(--bord-fort); }
+.labo-poignee text { font: 650 11px var(--police); fill: var(--encre); }
+.labo-poignee .labo-ep { font-weight: 600; fill: var(--encre-2); }
+.labo-poignee:hover rect, .labo-poignee.choisie rect { stroke: var(--accent); }
+.labo-poignee.tenue rect { fill: var(--accent); }
+.labo-poignee.tenue text { fill: #fff; }
+.labo-grille { stroke: #000; stroke-opacity: .12; stroke-dasharray: 2 4; }
+.labo-grad { font: 600 10.5px var(--police); fill: var(--encre-2); }
+.labo-courbe { fill: none; stroke: var(--encre); stroke-width: 2.4; stroke-linejoin: round; }
+.labo-courbe-halo { fill: none; stroke: var(--surface); stroke-width: 5.5; stroke-opacity: .85; stroke-linejoin: round; }
+.labo-fleche { stroke: var(--encre); stroke-width: 3; }
+.labo-pointe { fill: var(--encre); }
+.labo-flux { font: 800 14px var(--police); fill: var(--encre); }
+.labo-etiquette rect { fill: var(--surface); opacity: .92; }
+.labo-etiquette text { font: 700 12px var(--police); fill: var(--encre); }
+.labo-insertion { stroke: var(--accent); stroke-width: 4; stroke-linecap: round; }
+.labo-edition:empty { display: none; }
+.labo-outil { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-doux); }
+.labo-outil select { width: auto; max-width: 240px; }
+.labo-ep-curseur { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; }
+.labo-ep-curseur input { accent-color: var(--accent); width: 160px; }
+.labo-ep-curseur output { min-width: 52px; font-variant-numeric: tabular-nums; }
+.labo-commandes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+.labo-commandes input[type="range"] { flex: 1 1 200px; accent-color: var(--accent); }
+.labo-jouer { min-width: 120px; }
+.labo-vitesse { width: auto; }
+.labo-vitesse button { padding: 6px 10px; }
+.labo-reglages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; align-items: start; padding: 12px 0; border-top: 1px solid var(--bord); }
+.labo-champs { display: flex; flex-wrap: wrap; gap: 10px; }
+.labo-champs .champ { flex: 0 1 150px; }
+.labo-saisie { display: flex; align-items: center; gap: 6px; }
+.labo-saisie input { width: 80px; text-align: right; }
+.labo-saisie small { color: var(--encre-2); }
+.labo-bas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; border-top: 1px solid var(--bord); padding-top: 12px; }
+.labo-curseur { stroke: var(--accent); stroke-width: 2; }
+.labo-lecture { margin: 10px 0 0; }
+@media (max-width: 900px) {
+  .labo-reglages, .labo-bas { grid-template-columns: minmax(0, 1fr); }
+  .labo-reglages > .champ:nth-of-type(2) { order: 3; }
+}
+.labo-vitesse button { white-space: nowrap; }
+@media (max-width: 640px) { .labo-etiquette text { font-size: 11px; } .labo-flux { font-size: 13px; } }

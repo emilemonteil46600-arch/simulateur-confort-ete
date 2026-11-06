@@ -380,6 +380,7 @@
      ========================================================== */
   function renderCalcul() {
     const a = analyser(paroi);
+    document.dispatchEvent(new CustomEvent('confort:paroi'));   // le labo animé suit la paroi en cours
     renderResultats(a);
     renderSchema(a);
     renderDetailCouches(a);
@@ -539,6 +540,15 @@
   /* ==========================================================
      DÉMARRAGE
      ========================================================== */
+  // Ce que le labo animé (labo.js) peut lire et modifier : la paroi en cours de l'atelier.
+  window.ConfortAtelier = {
+    paroi: function () { return paroi; },
+    materiaux: function () { return materiaux.liste; },
+    analyser: function () { return analyser(paroi); },
+    onde: function () { return reglages.onde; },
+    modifier: function (changer) { changer(paroi); apresModifParoi(true); }
+  };
+
   BAO.initOnglets(CLES.onglet);
   BAO.carteDonnees($('#mes-donnees'));   // sauvegarde complète et restauration
   BAO.testeToi($('#teste-toi'), window.ConfortExercices);

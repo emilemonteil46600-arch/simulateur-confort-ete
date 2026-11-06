@@ -63,11 +63,13 @@ préconisations, validation, découpage en 8 étapes).
     calcul.js                 le sommaire (ConfortCalcul)
     calcul-parois.js          ch. 1 : U, masse, δ, matrices ISO 13786, κ, inertie du local (fait)
     calcul-batiment.js        ch. 1 bis : la maison — orientation, surfaces, volume, H = Σ U·A, inertie (fait)
+    calcul-transitoire.js     ch. 1 ter : le labo — différences finies, schéma implicite, pièce libre (fait)
     calcul-soleil.js          ch. 2 : météo, soleil, apports (étape 2)
     calcul-5r1c.js            ch. 3 : modèle horaire (étape 3) …
   affichage/                  projet.js (onglet Projet : saisie simple + résultat, AUCUN calcul),
                               maison3d.js (maquette 3D SVG faite main : projection orthogonale, faces visibles n·c > 0),
                               interface.js (onglet Atelier parois, AUCUN calcul), schemas.js et graphiques.js (SVG),
+                              labo.js (labo animé de l'atelier : mur en coupe, glisser-déposer, horloge ; AUCUN calcul),
                               exercices.js (Teste-toi ; la bonne réponse vient TOUJOURS de calcul/), site.css (style du site)
   donnees/                    données PUBLIQUES d'exemple (confort-materiaux.js, confort-projet.js : maison d'exemple,
                               usages, fenêtres Uw/g, protections ; lexique.js ; météo à venir)
@@ -103,6 +105,9 @@ préconisations, validation, découpage en 8 étapes).
    - maison d'exemple 10 × 8, plain-pied, 2 pans 35°, combles perdus, A au Sud : h = 2,80 m, murs opaques 84,2 m²,
      fenêtres 13 m² (16 %), H = 25,48 + 18,20 + 9,06 + 26,38 = **79,1 W/K**, Cm = **9 314 kJ/K** → 116 kJ/(m²·K) « Légère » ;
      combles aménagés → rampants 80 / cos 35° = 97,7 m² ;
+   - labo (différences finies, 5 mm, Δt 60 s, implicite) : retrouve |Y12| et Δt des matrices à < 1 % ; coup de chaud long →
+     q = U × ΔT ; énergie conservée à 1e-9 ; béton 18 + PSE 14, 20 → 35 °C, pièce libre 50 m³ 0,5 vol/h :
+     ITE 27,8 °C après 72 h (mi-chemin en 20,5 h) / ITI 35,0 °C (2 h) ; t ≈ e²/a : béton 20 cm ≈ 11 h ;
    - maquette 3D : caméra orthonormée et directe (r × h = c), Est à droite vu depuis le Sud (pas de miroir) ;
    - Teste-toi : 40 tirages par exercice.
 2. `node tests/navigateur.js` : aucune erreur console, 390 px clair / sombre, exemples à l'écran, sauvegarde / restauration.
@@ -125,7 +130,9 @@ préconisations, validation, découpage en 8 étapes).
 - **Note de confort** (étape 4) : chaque indicateur (Givoni, DH, heures > 28 °C, adaptatif, PMV/PPD, nuits chaudes…)
   noté **sur 10** par un barème **continu** (droite entre bornes), × un **coefficient**, moyenne pondérée → note /10.
   Barèmes et coefficients fixés AVEC Émile, modifiables dans Données, note toujours affichée avec son détail.
-- Ordre : 1 bis (maison 3D) → 2 (météo + soleil sur la maquette) → 3 (5R1C) → 4 (indicateurs + note) → 5…7.
+- Il aime avoir **deux modes** : le global (projet, confort de la maison) et des **mini-simulations de test** très visuelles
+  pour comprendre (le labo de l'atelier). Continuer dans cet esprit : chaque notion importante peut avoir son « labo ».
+- Ordre : 1 bis (maison 3D) → 1 ter (labo animé) → 2 (météo + soleil sur la maquette) → 3 (5R1C) → 4 (indicateurs + note) → 5…7.
 
 ## État au 07/11/2026
 
@@ -134,4 +141,5 @@ préconisations, validation, découpage en 8 étapes).
 | 0. Plan | Fait (`docs/etape-0.md`). |
 | 1. Parois | **Fait, en attente de l'accord d'Émile.** 23 matériaux et 13 parois d'exemple, U, masse, δ, matrices ISO 13786 → \|Y12\|, f, Δt, Y11, κ1, κ2, coupe SVG avec l'onde, journée chaude (2 graphiques), « Retourner la paroi », parois enregistrées et comparées, inertie du local (Cm, Am, classe ISO 13790 (H)), Méthode-cours en 15 sections, 5 exercices, 26 mots de lexique. Validé par différences finies. |
 | 1 bis. Maison 3D | **Fait, en attente de l'accord d'Émile** (il a reporté les 3 questions de l'étape 1). Refonte visuelle, onglet Projet (saisie 6 étapes, maquette 3D faite main, rose des fenêtres, H par poste, inertie de la maison, détail des calculs), 2 exercices, 2 mots de lexique, Méthode § 14 à 18. Fiche `docs/etape-1bis.md`. |
+| 1 ter. Labo animé | **Fait, en attente de l'accord d'Émile** (demande du 07/11/2026 : « voir la température avancer dans le mur, puis dans la pièce »). Labo dans l'atelier : palette de couches, glisser-déposer, mur en coupe coloré par la température + courbe θ(x) + flèche de flux, horloge, coup de chaud / journées d'été, pièce climatisée / libre, graphique avec curseur, contrôle d'énergie. Méthode § 19, 1 exercice, 2 mots de lexique. Fiche `docs/etape-1ter.md`. |
 | 2 à 7 | À faire, dans l'ordre du cahier des charges. Choix météo (étape 0) : PVGIS, 7 villes, 1er mai → 30 sept., canicule 2019 / 2022 si disponible, licence à vérifier (H). |

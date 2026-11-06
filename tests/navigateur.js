@@ -69,7 +69,7 @@ async function nouvellePage(navigateur, options) {
   const resultat = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };
   ok((await resultat()).includes('0,252') && (await resultat()).includes('7,7'), 'Béton 18 + ITE PSE 14 : U = 0,252, Δt ≈ 7,7 h');
   ok(await page.$('#schema svg .sch-onde') !== null, 'Coupe de la paroi avec la courbe de l\'onde');
-  ok(await page.$$eval('svg.graphique', function (s) { return s.length; }) === 2, 'Les 2 graphiques de la journée chaude sont dessinés');
+  ok(await page.$('#graphe-temperatures svg.graphique') !== null && await page.$('#graphe-flux svg.graphique') !== null, 'Les 2 graphiques de la journée chaude sont dessinés');
   const avant = await resultat();
   await page.click('#btn-retourner');
   const apres = await resultat();
@@ -83,6 +83,41 @@ async function nouvellePage(navigateur, options) {
   await page.fill('#nom-projet', 'Façade test');
   await page.click('#btn-enregistrer');
   ok((await page.textContent('#comparaison')).includes('Façade test'), 'Mes parois : la paroi enregistrée apparaît dans la comparaison');
+
+  console.log('3 ter. Le labo animé');
+  await page.selectOption('#modele', 'beton-ite');
+  await page.click('#btn-modele');
+  await page.waitForTimeout(300);
+  ok(await page.$('#labo-scene svg .labo-courbe') !== null, 'Labo : mur en coupe avec la courbe de température');
+  const nbCouches = function () { return page.$$eval('#corps-couches tr[data-couche]', function (t) { return t.length; }); };
+  const avantAjout = await nbCouches();
+  await page.click('#labo-palette [data-palette="0"]');
+  await page.waitForTimeout(300);
+  ok(await nbCouches() === avantAjout + 1 && (await page.inputValue('#corps-couches tr[data-couche="0"] select')) === 'plaque-platre', 'Labo : « + BA13 » ajoute une couche côté intérieur');
+  await page.click('#labo-edition [data-labo="retirer"]');
+  await page.waitForTimeout(300);
+  ok(await nbCouches() === avantAjout, 'Labo : « Retirer » enlève la couche');
+  // Glisser l'isolant (couche 3) tout à gauche : on passe de l'ITE à l'ITI.
+  const k1 = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  const poignee = await page.$('#labo-scene [data-couche="2"] rect');
+  const bp = await poignee.boundingBox();
+  const sceneBox = await (await page.$('#labo-scene svg')).boundingBox();
+  await page.mouse.move(bp.x + bp.width / 2, bp.y + bp.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sceneBox.x + sceneBox.width * 0.17, bp.y + bp.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  ok((await page.inputValue('#corps-couches tr[data-couche="0"] select')) === 'pse' && !(await k1()).includes('75,8'), 'Labo : glisser l\'isolant côté intérieur (ITE → ITI) change κ1');
+  const heure0 = await page.textContent('#labo-heure');
+  await page.click('#labo-jouer');
+  await page.waitForTimeout(900);
+  await page.click('#labo-jouer');
+  ok((await page.textContent('#labo-heure')) !== heure0, 'Labo : le temps avance (' + heure0 + ' → ' + await page.textContent('#labo-heure') + ')');
+  ok((await page.textContent('#labo-mesures')).includes('conservation de l'), 'Labo : contrôle de conservation de l\'énergie affiché');
+  await page.click('[data-piece="libre"]');
+  await page.waitForTimeout(400);
+  ok((await page.textContent('#labo-mesures')).includes('Air de la pièce'), 'Labo : pièce libre');
+  await page.click('[data-piece="fixe"]');
 
   console.log('4. Méthode, lexique, Teste-toi');
   await page.click('[data-onglet="methode"]');

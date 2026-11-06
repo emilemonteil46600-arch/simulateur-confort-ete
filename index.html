@@ -6,8 +6,8 @@
   <title>Simulateur de confort d'été</title>
   <meta name="description" content="Simulateur de confort d'été transparent : maison en 3D, parois couche par couche (NF EN ISO 13786), déperditions, inertie, et bientôt une note de confort multicritère (Givoni, degrés-heures, confort adaptatif).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="commun/style.css?v=20261107">
-  <link rel="stylesheet" href="affichage/site.css?v=20261107">
+  <link rel="stylesheet" href="commun/style.css?v=20261108">
+  <link rel="stylesheet" href="affichage/site.css?v=20261108">
 </head>
 <body class="appli">
 
@@ -24,7 +24,7 @@
       <button data-onglet="donnees">Données</button>
     </nav>
     <a class="lien-bao" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils">Boîte à outils ↗</a>
-    <span class="version">Étape 1 bis · nov. 2026</span>
+    <span class="version">Étape 1 ter · nov. 2026</span>
   </div>
 </header>
 
@@ -112,6 +112,35 @@
   <!-- ===================== ONGLET ATELIER PAROIS (mode expert) ===================== -->
   <section class="panneau" id="onglet-atelier" role="tabpanel" hidden>
     <div class="bandeau-expert"><b>Atelier parois · mode expert.</b> Décris une paroi couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), puis l'inertie d'un local (NF EN ISO 13790). Les parois que tu enregistres ici apparaissent dans les listes du projet.</div>
+
+    <div class="carte labo" id="labo">
+      <div class="labo-tete">
+        <div>
+          <h2>Le labo : la chaleur qui traverse le mur</h2>
+          <p class="aide" style="margin:2px 0 0">Ajoute des couches, <b>glisse-les</b> d'un côté à l'autre, puis lance le temps. Les couleurs et la courbe montrent la <b>température</b> qui avance dans le mur ; les flèches, le <b>flux</b> de chaleur (W/m²) qui entre dans la pièce.</p>
+        </div>
+        <div class="labo-horloge" aria-live="off"><span id="labo-jour">Jour 1</span><b id="labo-heure">0 h 00</b><span id="labo-dehors"></span></div>
+      </div>
+      <div class="labo-palette" id="labo-palette" aria-label="Ajouter une couche côté intérieur"></div>
+      <div class="labo-scene" id="labo-scene"></div>
+      <div class="labo-edition" id="labo-edition"></div>
+      <div class="labo-commandes">
+        <button type="button" class="bouton principal labo-jouer" id="labo-jouer">▶ Lancer</button>
+        <button type="button" class="bouton" id="labo-zero" title="Revenir au début">⟲</button>
+        <input type="range" id="labo-temps" min="0" max="1000" value="0" aria-label="Position dans le temps">
+        <div class="segments labo-vitesse" id="labo-vitesse" role="group" aria-label="Vitesse"></div>
+      </div>
+      <div class="labo-reglages">
+        <div class="champ"><span class="etiquette">Ce qui se passe dehors</span><div class="segments" id="labo-scenario" role="group" aria-label="Scénario"></div></div>
+        <div class="labo-champs" id="labo-champs-scenario"></div>
+        <div class="champ"><span class="etiquette">La pièce</span><div class="segments" id="labo-piece" role="group" aria-label="Pièce"></div></div>
+        <div class="labo-champs" id="labo-champs-piece"></div>
+      </div>
+      <div class="labo-bas">
+        <div><h3 style="margin:0 0 4px">Les températures dans le temps</h3><div id="labo-graphe"></div></div>
+        <div id="labo-mesures"></div>
+      </div>
+    </div>
     <div class="grille-2">
       <div>
         <div class="carte">
@@ -231,7 +260,7 @@
   <!-- ===================== ONGLET MÉTHODE ===================== -->
   <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
     <div class="carte methode">
-      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D.</p>
+      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute.</p>
       <h2>1. Ce qu'on cherche</h2>
       <p>L'hiver, on veut savoir <b>combien</b> de chaleur s'en va : c'est U, un calcul en <b>régime permanent</b> (on suppose que les températures ne bougent pas). L'été, la question change : dehors, la température <b>monte et descend chaque jour</b> et le soleil chauffe les façades. Une paroi lourde ne laisse pas passer cette onde tout de suite : elle en <b>stocke</b> une partie, la <b>retarde</b> et l'<b>écrase</b>. Deux murs de même U peuvent donc donner des pièces très différentes l'été.</p>
       <p>Cette étape calcule, pour une paroi décrite couche par couche :</p>
@@ -479,22 +508,43 @@ point P à l'écran :  x = P·r     y = −P·h      (projection orthogonale)
 face visible si sa normale n vérifie  n·c > 0</div>
       <p>C'est de la géométrie vectorielle de base : un produit scalaire « projette » un point sur un axe de l'écran. La maison étant convexe, cacher les faces dont la normale ne regarde pas la caméra suffit pour un dessin juste. L'ombrage est un simple n·L avec une lumière fixe : le vrai soleil arrive à l'étape 2.</p>
 
-      <h2>19. Teste-toi</h2>
+      <h2>19. Le labo : la chaleur qui avance (différences finies)</h2>
+      <p>Les matrices de transfert (section 7) donnent la réponse <b>exacte</b> à une onde sinusoïdale déjà installée. Pour voir la chaleur <b>avancer</b>, minute par minute, après n'importe quel changement (un coup de chaud brutal, une suite de journées), on résout l'équation de la chaleur pas à pas : c'est la méthode des <b>différences finies</b>, celle des logiciels de STD.</p>
+      <p><b>Ce qui avance, et ce qui passe.</b> Ce que tu vois avancer (couleurs, courbe), c'est la <b>température</b> : elle diffuse dans la matière. Ce qui passe, c'est le <b>flux de chaleur</b> q (W/m²). Les deux sont liés par Fourier, q = −λ·dθ/dx : le flux est fort là où la courbe est raide. Dire « le flux traverse le mur » est donc juste ; dire « la température traverse le mur » l'est aussi, mais ce n'est pas la même grandeur.</p>
+      <div class="formule">1. On découpe le mur en tranches de 5 mm au plus. Tranche i : capacité Ci = ρ·c·dx  [J/(m²·K)]
+2. Entre deux tranches : conductance G = 1 / (dx1/(2·λ1) + dx2/(2·λ2))  [W/(m²·K)]
+   (deux demi-tranches en série, Fourier entre deux points voisins). Côté air : G = 1 / (Rs + dx/(2λ)).
+3. Bilan de la tranche i pendant Δt = 60 s :
+   Ci × (Ti' − Ti) / Δt = G gauche × (T gauche' − Ti') + G droite × (T droite' − Ti')
+   « ce qui s'accumule = ce qui entre − ce qui sort »
+4. Schéma implicite : les ' désignent la fin du pas. Toujours stable ; on résout un système
+   « tridiagonal » (chaque tranche ne parle qu'à ses 2 voisines) par l'algorithme de Thomas.</div>
+      <p><b>Pourquoi implicite ?</b> Un schéma explicite (calculer Ti' avec les températures du début du pas) est plus simple, mais il n'est stable que si le nombre de Fourier Fo = a·Δt/dx² reste sous 1/2. Pour 5 mm de béton : Δt ≤ 12 s. L'implicite accepte Δt = 60 s sans diverger.</p>
+      <p><b>La pièce</b> (mode « libre »). Un nœud de plus, ramené au m² du mur étudié : capacité Cp = (ρc air × V + mobilier) / A mur, ventilation Hv = ρc air × n × V / 3600 / A mur, avec ρc air ≈ 1 200 J/(m³·K) (H). (H) Les autres parois de la pièce sont supposées adiabatiques et sans masse : seul ce mur échange avec la pièce.</p>
+      <div class="formule">Cp × (Ta' − Ta)/Δt = G0 × (T1' − Ta') + Hv × (Te' − Ta')
+Flux qui entre dans la pièce   q = G0 × (T1 − Ta)        Face intérieure   θsi = Ta + Rsi × q</div>
+      <p><b>Le bon ordre de grandeur, de tête.</b> Une variation de température met environ t ≈ e²/a à traverser une épaisseur e (a = λ/(ρc)). Béton 20 cm : 0,2² / 1,0·10⁻⁶ = 40 000 s ≈ 11 h. Laine minérale 12 cm (a ≈ 1,7·10⁻⁶) : ≈ 2,4 h. L'isolant laisse passer le front vite, mais il ne transporte presque pas de chaleur : son λ est 65 fois plus petit.</p>
+      <p><b>Comment on sait que c'est juste</b> (tests Node) : en régime établi sur une journée, le labo retrouve |Y12| et le déphasage des matrices à moins de 1 % près ; après un coup de chaud très long, le flux tend exactement vers U × ΔT (le régime permanent) ; et la variation d'énergie stockée égale l'énergie entrée à 10⁻⁹ près (conservation de l'énergie, affichée sous le graphique).</p>
+      <p><b>Une expérience à faire.</b> Pièce « libre », coup de chaud de 20 à 35 °C, 72 h, béton 18 cm + isolant. En ITE (béton côté pièce), la pièce reste bien plus fraîche qu'en ITI : le béton absorbe la chaleur apportée par l'air neuf. En ITI, l'isolant « débranche » cette masse.</p>
+
+      <h2>20. Teste-toi</h2>
       <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
       <div id="teste-toi"></div>
 
-      <h2>20. Où est le code</h2>
+      <h2>21. Où est le code</h2>
       <ul>
         <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
         <li><code>calcul/calcul-batiment.js</code> : chapitre 1 bis, la maison (surfaces, H, inertie).</li>
+        <li><code>calcul/calcul-transitoire.js</code> : chapitre 1 ter, le labo (différences finies, schéma implicite, la pièce).</li>
         <li><code>calcul/calcul.js</code> : le sommaire des chapitres.</li>
+        <li><code>affichage/labo.js</code> : le labo animé (dessin, glisser-déposer, horloge ; aucun calcul).</li>
         <li><code>affichage/maison3d.js</code> : la maquette 3D (projection, faces visibles, fenêtres, rotation).</li>
         <li><code>affichage/projet.js</code> : l'onglet Projet (saisie, résultats ; aucun calcul).</li>
         <li><code>affichage/schemas.js</code> et <code>affichage/graphiques.js</code> : les dessins (aucun calcul).</li>
         <li><code>affichage/interface.js</code> : l'affichage et les boutons (aucun calcul).</li>
         <li><code>donnees/confort-materiaux.js</code> : les matériaux, parois et local d'exemple (publics).</li>
         <li><code>tests/confort-parois.test.js</code> : la validation (différences finies, exemple à la main, limites).</li>
-        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>.</li>
+        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>, <code>docs/etape-1ter.md</code>.</li>
       </ul>
     </div>
   </section>
@@ -542,18 +592,20 @@ face visible si sa normale n vérifie  n·c > 0</div>
   Outil personnel d'aide à l'audit énergétique. Ordres de grandeur pour comprendre et comparer des variantes ; la STD reste la référence.
 </footer>
 
-<script src="commun/commun.js?v=20261107"></script>
-<script src="donnees/confort-materiaux.js?v=20261107"></script>
-<script src="donnees/confort-projet.js?v=20261107"></script>
-<script src="calcul/calcul-parois.js?v=20261107"></script>
-<script src="calcul/calcul-batiment.js?v=20261107"></script>
-<script src="calcul/calcul.js?v=20261107"></script>
-<script src="affichage/schemas.js?v=20261107"></script>
-<script src="affichage/graphiques.js?v=20261107"></script>
-<script src="affichage/exercices.js?v=20261107"></script>
-<script src="donnees/lexique.js?v=20261107"></script>
-<script src="affichage/maison3d.js?v=20261107"></script>
-<script src="affichage/interface.js?v=20261107"></script>
-<script src="affichage/projet.js?v=20261107"></script>
+<script src="commun/commun.js?v=20261108"></script>
+<script src="donnees/confort-materiaux.js?v=20261108"></script>
+<script src="donnees/confort-projet.js?v=20261108"></script>
+<script src="calcul/calcul-parois.js?v=20261108"></script>
+<script src="calcul/calcul-batiment.js?v=20261108"></script>
+<script src="calcul/calcul-transitoire.js?v=20261108"></script>
+<script src="calcul/calcul.js?v=20261108"></script>
+<script src="affichage/schemas.js?v=20261108"></script>
+<script src="affichage/graphiques.js?v=20261108"></script>
+<script src="affichage/exercices.js?v=20261108"></script>
+<script src="donnees/lexique.js?v=20261108"></script>
+<script src="affichage/maison3d.js?v=20261108"></script>
+<script src="affichage/interface.js?v=20261108"></script>
+<script src="affichage/labo.js?v=20261108"></script>
+<script src="affichage/projet.js?v=20261108"></script>
 </body>
 </html>

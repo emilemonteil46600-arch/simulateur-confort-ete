@@ -41,6 +41,9 @@
       geometrie: Object.assign(base.geometrie, p.geometrie || {}),
       facades: B.FACADES.reduce(function (o, f) { o[f] = Object.assign({ vitrage: 0, protection: 'aucune' }, base.facades[f], (p.facades || {})[f] || {}); return o; }, {}),
       vitrage: p.vitrage || base.vitrage,
+      ville: p.ville || base.ville,
+      casquettes: Object.assign({}, base.casquettes, p.casquettes || {}),
+      couleurs: Object.assign({}, base.couleurs, p.couleurs || {}),
       parois: Object.assign(base.parois, p.parois || {}),
       cloisons: Object.assign(base.cloisons, p.cloisons || {})
     };
@@ -67,6 +70,14 @@
     return liste;
   }
   function vitrageChoisi() { const l = vitrages(); return l.find(function (v) { return v.id === projet.vitrage; }) || l[0]; }
+  // Protections : les valeurs d'Émile (onglet Données) si elles existent, complétées par les exemples.
+  function protections() {
+    const r = reglages();
+    const liste = Array.isArray(r.protections) ? r.protections.slice() : BAO.cloner(X.protections);
+    X.protections.forEach(function (v) { if (!liste.some(function (x) { return x.id === v.id; })) liste.push(BAO.cloner(v)); });
+    return liste;
+  }
+  function seuilProtection() { const r = reglages(); return isFinite(r.seuilProtection) ? Number(r.seuilProtection) : X.seuilProtection.valeur; }
 
   // Une paroi du projet : 'perso:<nom>' (atelier) ou l'identifiant d'un modèle.
   function paroi(ref) {
@@ -111,6 +122,10 @@
     const g = projet.geometrie;
     $('#projet-nom').value = projet.nom || '';
     $('#projet-usage').innerHTML = X.usages.map(function (u) { return '<option value="' + u.id + '"' + (u.id === projet.usage ? ' selected' : '') + '>' + esc(u.nom) + '</option>'; }).join('');
+    const V = window.CONFORT_METEO_VILLES;
+    $('#projet-ville').innerHTML = V.villes.map(function (v) { return '<option value="' + v.id + '"' + (v.id === projet.ville ? ' selected' : '') + '>' + esc(v.nom) + ' (' + v.zone + ')</option>'; }).join('');
+    segments($('#g-couleur-murs'), X.couleurs, projet.couleurs.murs, 'data-couleur-murs');
+    segments($('#g-couleur-toiture'), X.couleurs, projet.couleurs.toiture, 'data-couleur-toiture');
     document.querySelectorAll('input[data-geo]').forEach(function (i) { i.value = g[i.dataset.geo]; });
     $('#g-cloisons').value = projet.cloisons.ratio;
     segments($('#g-niveaux'), [1, 2, 3, 4].map(function (n) { return { id: n, nom: String(n) }; }), g.niveaux, 'data-niveaux');
@@ -143,7 +158,7 @@
     const toit = TOITS.find(function (t) { return t.id === g.toit; });
     const vitre = B.FACADES.reduce(function (s, f) { return s + (Number(projet.facades[f].vitrage) || 0); }, 0);
     const resume = {
-      projet: (X.usages.find(function (u) { return u.id === projet.usage; }) || {}).nom || '',
+      projet: ((X.usages.find(function (u) { return u.id === projet.usage; }) || {}).nom || '') + ' · ' + ((window.CONFORT_METEO_VILLES.villes.find(function (v) { return v.id === projet.ville; }) || {}).nom || ''),
       volume: nb(g.longueur, 1) + ' × ' + nb(g.largeur, 1) + ' m · ' + g.niveaux + ' niv.',
       toiture: toit.nom + (g.toit === 'plat' ? '' : ' · ' + nb(g.pente) + '°'),
       orientation: 'A → ' + o.nom,
@@ -173,7 +188,8 @@
         '<label class="facade-m2"><input type="text" inputmode="decimal" data-champ="vitrage" value="' + esc(BAO.versChamp(fa.vitrage)) + '" aria-label="Vitrage façade ' + f + ' en m²"><span>m²</span></label>' +
         '<select data-champ="protection" aria-label="Protection façade ' + f + '">' + X.protections.map(function (p) {
           return '<option value="' + p.id + '"' + (p.id === fa.protection ? ' selected' : '') + '>' + esc(p.nom) + '</option>';
-        }).join('') + '</select></div>';
+        }).join('') + '</select>' +
+        '<label class="facade-casquette" title="Casquette (débord) au-dessus des fenêtres : profondeur en m"><span>casquette</span><input type="text" inputmode="decimal" data-champ="casquette" value="' + esc(BAO.versChamp(projet.casquettes[f] || 0)) + '" aria-label="Casquette façade ' + f + ' en m"><span>m</span></label></div>';
     }).join('');
   }
 
@@ -219,11 +235,13 @@
     let html = '<div class="carte note-carte"><div class="carte-titre"><h2>Note de confort d\'été</h2><span class="badge bientot">étape 4</span></div>' +
       jaugeVide() +
       '<p class="aide" style="margin:2px 0 8px;text-align:center">Elle combinera les indicateurs ci-dessous, chacun noté sur 10 avec <b>tes barèmes</b> et pondéré par <b>tes coefficients</b>.</p>' +
-      '<div class="puces-futures">' + INDICATEURS_FUTURS.map(function (i) { return '<span>' + i + '</span>'; }).join('') + '</div></div>';
+      '<div class="puces-futures">' + INDICATEURS_FUTURS.map(function (i) { return '<span>' + i + '</span>'; }).join('') + '</div></div>' +
+      '<div id="carte-apports"></div>';
 
     if (erreurs.length) {
       $('#chiffres-maison').innerHTML = '';
       $('#resultat-projet').innerHTML = html + '<div class="alerte attention"><b>À corriger :</b><ul style="margin:6px 0 0 18px;padding:0">' + erreurs.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>';
+      derniere = null;
       return null;
     }
     const s = B.syntheseProjet(projet, an, v);
@@ -262,6 +280,7 @@
 
     html += '<details class="carte detail-calcul"><summary>Le détail des calculs</summary><div class="formule">' + esc(detailCalcul(s, an, v)) + '</div></details>';
     $('#resultat-projet').innerHTML = html;
+    derniere = { synthese: s, analyses: an, vitrage: v };
     return s;
   }
 
@@ -284,6 +303,21 @@
   /* ==========================================================
      DONNÉES : types de fenêtres
      ========================================================== */
+  function renderProtections() {
+    const liste = protections();
+    const valides = liste.filter(function (v) { return v.statut === 'valide'; }).length;
+    $('#stats-protections').innerHTML = liste.length + ' protections · <b>' + valides + ' validée' + (valides > 1 ? 's' : '') + '</b>';
+    $('#corps-protections').innerHTML = liste.map(function (v, i) {
+      if (v.id === 'aucune') return '<tr><td>' + esc(v.nom) + '</td><td class="num">1</td><td colspan="3" class="aide">Rien n\'est arrêté</td></tr>';
+      return '<tr data-index="' + i + '"><td>' + esc(v.nom) + '</td>' +
+        '<td><input type="text" inputmode="decimal" data-champ="Fc" value="' + esc(BAO.versChamp(v.Fc)) + '" style="width:70px;text-align:right" aria-label="Fc"></td>' +
+        '<td><input type="text" data-champ="source" value="' + esc(v.source || '') + '" style="min-width:260px" aria-label="Source"></td>' +
+        '<td><input type="month" data-champ="dateRef" value="' + esc(v.dateRef || '') + '" style="min-width:140px" aria-label="Mois"></td>' +
+        '<td>' + BAO.selectStatut(v.statut, 'data-champ="statut"') + '</td></tr>';
+    }).join('');
+    $('#seuil-protection').value = BAO.versChamp(seuilProtection());
+  }
+
   function renderVitrages() {
     const liste = vitrages();
     const valides = liste.filter(function (v) { return v.statut === 'valide'; }).length;
@@ -301,6 +335,7 @@
      ÉVÉNEMENTS
      ========================================================== */
   let maquette = null;
+  let derniere = null;   // le dernier résultat (synthèse, analyses des parois, fenêtre) : lu par affichage/soleil.js
 
   function choisir(cible) {
     selection = cible;
@@ -340,6 +375,7 @@
     if (saisieComplete) renderSaisie(); else { renderSorties(); renderFacades(); }
     maquette.mettreAJour(projet, selection);
     renderResultat();
+    document.dispatchEvent(new CustomEvent('confort:projet'));
   }
 
   function apresModif(saisieComplete) { sauver(); toutRedessiner(saisieComplete); }
@@ -347,6 +383,7 @@
   function brancher() {
     $('#projet-nom').addEventListener('input', function (e) { projet.nom = e.target.value; sauver(); });
     $('#projet-usage').addEventListener('change', function (e) { projet.usage = e.target.value; apresModif(false); });
+    $('#projet-ville').addEventListener('change', function (e) { projet.ville = e.target.value; apresModif(false); });
     document.querySelectorAll('input[data-geo]').forEach(function (i) {
       i.addEventListener('input', function () {
         projet.geometrie[i.dataset.geo] = Number(i.value);
@@ -363,6 +400,8 @@
       else if (b.dataset.toit) { g.toit = b.dataset.toit; adapterToiture(); }
       else if (b.dataset.combles) { g.combles = b.dataset.combles; adapterToiture(); }
       else if (b.dataset.azimut !== undefined) g.orientation = Number(b.dataset.azimut);
+      else if (b.dataset.couleurMurs) projet.couleurs.murs = b.dataset.couleurMurs;
+      else if (b.dataset.couleurToiture) projet.couleurs.toiture = b.dataset.couleurToiture;
       else if (b.id === 'btn-projet-exemple') {
         if (!confirm('Revenir à la maison d\'exemple ? Ta saisie actuelle sera remplacée.')) return;
         projet = completer(BAO.cloner(X.projet));
@@ -381,6 +420,10 @@
         const v = BAO.lireNombre(t.value);
         if (!isFinite(v) || v < 0) { BAO.notifier('Surface invalide : un nombre de m² (ex. 4,5).'); renderFacades(); return; }
         fa.vitrage = v;
+      } else if (t.dataset.champ === 'casquette') {
+        const v = BAO.lireNombre(t.value);
+        if (!isFinite(v) || v < 0 || v > 5) { BAO.notifier('Casquette : une profondeur en m, entre 0 et 5.'); renderFacades(); return; }
+        projet.casquettes[ligne.dataset.facade] = v;
       } else if (t.dataset.champ === 'protection') fa.protection = t.value;
       apresModif(false);
     });
@@ -416,8 +459,35 @@
       toutRedessiner(true);
     });
 
+    // Données : protections solaires et seuil.
+    $('#corps-protections').addEventListener('change', function (e) {
+      const tr = e.target.closest('tr[data-index]');
+      const champ = e.target.dataset.champ;
+      if (!tr || !champ) return;
+      const liste = protections();
+      const v = liste[Number(tr.dataset.index)];
+      if (champ === 'Fc') {
+        const n = BAO.lireNombre(e.target.value);
+        if (!isFinite(n) || n < 0 || n > 1) { BAO.notifier('Fc : entre 0 et 1.'); renderProtections(); return; }
+        v.Fc = n;
+      } else v[champ] = e.target.value;
+      const r = reglages();
+      r.protections = liste;
+      BAO.ecrire(CLES.reglages, r);
+      renderProtections();
+      toutRedessiner(false);
+    });
+    $('#seuil-protection').addEventListener('change', function (e) {
+      const n = BAO.lireNombre(e.target.value);
+      if (!isFinite(n) || n < 0) { BAO.notifier('Seuil invalide.'); renderProtections(); return; }
+      const r = reglages();
+      r.seuilProtection = n;
+      BAO.ecrire(CLES.reglages, r);
+      toutRedessiner(false);
+    });
+
     // L'atelier ou les matériaux ont changé : les listes et le résultat suivent.
-    document.addEventListener('confort:donnees', function () { toutRedessiner(true); });
+    document.addEventListener('confort:donnees', function () { renderProtections(); renderVitrages(); toutRedessiner(true); });
   }
 
   // Démarrage protégé : si un fichier manque ou si le navigateur a gardé une ancienne version en mémoire,
@@ -425,8 +495,17 @@
   try {
     if (!B || !P || !window.ConfortMaison3D) throw new Error('fichier de calcul ou de dessin manquant');
     maquette = window.ConfortMaison3D.creer($('#maison3d'), { surSelection: choisir });
+    // Ce que l'affichage du soleil (affichage/soleil.js) lit : jamais de calcul ici, seulement l'état.
+    window.ConfortProjet = {
+      projet: function () { return projet; },
+      resultat: function () { return derniere; },
+      protections: protections,
+      seuil: seuilProtection,
+      maquette: maquette
+    };
     brancher();
     renderVitrages();
+    renderProtections();
     toutRedessiner(true);
   } catch (e) {
     const msg = '<div class="alerte attention" style="margin:0"><b>La page n\'a pas pu démarrer.</b> Ton navigateur utilise sans doute ' +

@@ -6,8 +6,8 @@
   <title>Simulateur de confort d'été</title>
   <meta name="description" content="Simulateur de confort d'été transparent : maison en 3D, parois couche par couche (NF EN ISO 13786), déperditions, inertie, et bientôt une note de confort multicritère (Givoni, degrés-heures, confort adaptatif).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="commun/style.css?v=20261110">
-  <link rel="stylesheet" href="affichage/site.css?v=20261110">
+  <link rel="stylesheet" href="commun/style.css?v=20261111">
+  <link rel="stylesheet" href="affichage/site.css?v=20261111">
 </head>
 <body class="appli">
 
@@ -24,7 +24,7 @@
       <button data-onglet="donnees">Données</button>
     </nav>
     <a class="lien-bao" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils">Boîte à outils ↗</a>
-    <span class="version">Étape 1 ter · nov. 2026</span>
+    <span class="version">Étape 2 · nov. 2026</span>
   </div>
 </header>
 
@@ -39,6 +39,7 @@
           <div class="pas-corps">
             <div class="champ"><label for="projet-nom">Nom</label><input type="text" id="projet-nom" autocomplete="off"></div>
             <div class="champ"><label for="projet-usage">Usage</label><select id="projet-usage"></select></div>
+            <div class="champ"><label for="projet-ville">Ville (météo)</label><select id="projet-ville"></select><span class="aide" id="ville-info"></span></div>
           </div>
         </details>
 
@@ -59,6 +60,7 @@
             <div class="curseur" id="bloc-pente"><label for="g-pente">Pente</label><input type="range" id="g-pente" min="5" max="60" step="1" data-geo="pente"><output data-sortie="pente"></output></div>
             <div class="champ" id="bloc-combles"><span class="etiquette">Combles</span><div class="segments" id="g-combles" role="group" aria-label="Combles"></div></div>
             <div class="champ"><label for="p-toiture">Composition (isolation)</label><select id="p-toiture" data-paroi="toiture"></select></div>
+            <div class="champ"><span class="etiquette">Couleur de la couverture</span><div class="segments" id="g-couleur-toiture" role="group" aria-label="Couleur de la couverture"></div></div>
           </div>
         </details>
 
@@ -76,7 +78,7 @@
           <div class="pas-corps">
             <div class="champ"><label for="vitrage-type">Type de fenêtre</label><select id="vitrage-type"></select></div>
             <div class="facades" id="facades"></div>
-            <p class="aide" style="margin:6px 0 0">Surface en m² de vitrage par façade. L'effet des protections sera calculé à l'étape 2 (soleil).</p>
+            <p class="aide" style="margin:6px 0 0">Par façade : la surface de vitrage (m²), la <b>protection</b> (baissée automatiquement quand la façade reçoit plus de 200 W/m² (H)) et la profondeur d'une éventuelle <b>casquette</b> au-dessus des fenêtres (m).</p>
           </div>
         </details>
 
@@ -84,6 +86,7 @@
           <summary><span class="pas-n">6</span><span class="pas-titre">Murs et planchers</span><span class="pas-resume" data-resume="parois"></span></summary>
           <div class="pas-corps">
             <div class="champ"><label for="p-murs">Murs extérieurs</label><select id="p-murs" data-paroi="murs"></select></div>
+            <div class="champ"><span class="etiquette">Couleur des murs</span><div class="segments" id="g-couleur-murs" role="group" aria-label="Couleur des murs"></div></div>
             <div class="champ"><label for="p-plancherBas">Plancher bas</label><select id="p-plancherBas" data-paroi="plancherBas"></select></div>
             <div class="champ" id="bloc-plancherInter"><label for="p-plancherInter">Planchers entre niveaux</label><select id="p-plancherInter" data-paroi="plancherInter"></select></div>
             <div class="champ"><label for="p-cloisons">Cloisons</label><select id="p-cloisons" data-paroi="cloisons"></select></div>
@@ -100,7 +103,9 @@
       <!-- ----- Maquette 3D ----- -->
       <div class="studio-3d">
         <div class="carte carte-3d" id="maison3d"></div>
+        <div class="barre-soleil" id="barre-soleil"></div>
         <div class="tuiles tuiles-3d" id="chiffres-maison"></div>
+        <div id="soleil-projet"></div>
       </div>
 
       <!-- ----- Résultat ----- -->
@@ -260,7 +265,7 @@
   <!-- ===================== ONGLET MÉTHODE ===================== -->
   <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
     <div class="carte methode">
-      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute.</p>
+      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute. <b>Chapitre 2</b> (sections 20 à 27) : la météo, le soleil sur chaque paroi et toute la chaleur qui entre dans la maison.</p>
       <h2>1. Ce qu'on cherche</h2>
       <p>L'hiver, on veut savoir <b>combien</b> de chaleur s'en va : c'est U, un calcul en <b>régime permanent</b> (on suppose que les températures ne bougent pas). L'été, la question change : dehors, la température <b>monte et descend chaque jour</b> et le soleil chauffe les façades. Une paroi lourde ne laisse pas passer cette onde tout de suite : elle en <b>stocke</b> une partie, la <b>retarde</b> et l'<b>écrase</b>. Deux murs de même U peuvent donc donner des pièces très différentes l'été.</p>
       <p>Cette étape calcule, pour une paroi décrite couche par couche :</p>
@@ -527,11 +532,127 @@ Flux qui entre dans la pièce   q = G0 × (T1 − Ta)        Face intérieure   
       <p><b>Comment on sait que c'est juste</b> (tests Node) : en régime établi sur une journée, le labo retrouve |Y12| et le déphasage des matrices à moins de 1 % près ; après un coup de chaud très long, le flux tend exactement vers U × ΔT (le régime permanent) ; et la variation d'énergie stockée égale l'énergie entrée à 10⁻⁹ près (conservation de l'énergie, affichée sous le graphique).</p>
       <p><b>Une expérience à faire.</b> Pièce « libre », coup de chaud de 20 à 35 °C, 72 h, béton 18 cm + isolant. En ITE (béton côté pièce), la pièce reste bien plus fraîche qu'en ITI : le béton absorbe la chaleur apportée par l'air neuf. En ITI, l'isolant « débranche » cette masse.</p>
 
-      <h2>20. Teste-toi</h2>
+      <h2>20. La météo : une année type, heure par heure</h2>
+      <p>Pour savoir s'il fera chaud dedans, il faut d'abord savoir ce qui arrive dehors, <b>heure par heure</b> : la température de l'air, l'humidité, le vent, et surtout le <b>rayonnement solaire</b>. Le simulateur embarque 10 villes (Paris, Strasbourg, Lyon, Bordeaux, Toulouse, Pau, Bayonne, Marseille, Nice, Perpignan), 8 760 heures chacune.</p>
+      <p><b>D'où viennent les données.</b> De <b>PVGIS 5.3</b>, l'outil solaire de la Commission européenne (Centre commun de recherche, JRC). Le rayonnement vient des satellites (base SARAH-3), la température, l'humidité et le vent de la réanalyse météo ERA5. PVGIS fabrique une <b>année météo type</b> (TMY) : pour chaque mois, il prend le mois réel le plus « moyen » des années 2005 à 2023 (méthode de l'ISO 15927-4) et met les 12 mois bout à bout. À Toulouse, par exemple, juin vient de 2022 et juillet de 2021.</p>
+      <p><b>Ce que ça veut dire pour le confort d'été.</b> Une année type représente un été <b>normal</b>. Ce n'est <b>pas</b> une canicule : un bâtiment confortable en année type peut être invivable en août 2003. Les scénarios de canicule viendront plus tard (H).</p>
+      <div class="formule">Pour chaque heure k (0 à 8 759, en temps universel UTC) :
+  T    température de l'air à 2 m                       °C
+  HR   humidité relative                                 %
+  Gbn  rayonnement DIRECT sur un plan face au soleil      W/m²   (« beam normal »)
+  Gdh  rayonnement DIFFUS sur un plan horizontal           W/m²   (« diffuse horizontal »)
+  V    vent à 10 m                                       m/s
+Le rayonnement de l'heure k est mesuré à k + 0,17 h (≈ 10 min) : c'est là qu'on place le soleil.</div>
+      <p><b>Pourquoi deux rayonnements.</b> Le <b>direct</b> arrive en faisceau parallèle depuis le disque solaire : il dépend de l'angle sous lequel la paroi voit le soleil. Le <b>diffus</b> a été éparpillé par l'air et les nuages : il vient de tout le ciel. Par ciel couvert, il n'y a presque que du diffus. Une heure, une ville et deux nombres suffisent à calculer ce que reçoit n'importe quelle paroi.</p>
+      <p><b>Licence (H)</b> : la Commission autorise la réutilisation de ses données en citant la source (décision 2011/833/UE) ; à vérifier sur la page « Legal notice » de PVGIS.</p>
+
+      <h2>21. Où est le soleil ?</h2>
+      <p>On repère le soleil par deux angles : sa <b>hauteur h</b> au-dessus de l'horizon et son <b>azimut a</b>, compté depuis le Nord dans le sens des aiguilles d'une montre (comme l'orientation des façades : Est 90°, Sud 180°, Ouest 270°). Pour les trouver, il faut trois ingrédients.</p>
+      <p><b>1. La déclinaison δ : la saison.</b> L'axe de la Terre est penché de 23,44° sur son orbite. Au fil de l'année, le soleil passe donc de 23,45° au-dessus de l'équateur (solstice d'été, 21 juin) à 23,45° en dessous (solstice d'hiver). C'est ça, les saisons. On la calcule par la série de Fourier de <b>Spencer (1971)</b>, à partir de l'angle du jour B (la position de la Terre sur son orbite) :</p>
+      <div class="formule">B = 360° × (n − 1 + (t − 12)/24) / 365          n : jour de l'année, t : heure UTC
+δ = 0,006918 − 0,399912 cos B + 0,070257 sin B − 0,006758 cos 2B
+    + 0,000907 sin 2B − 0,002697 cos 3B + 0,00148 sin 3B          (en radians)</div>
+      <p><b>2. L'heure solaire : où en est la rotation.</b> La Terre tourne de 360° en 24 h, soit <b>15° par heure</b>, donc 4 minutes par degré de longitude. Midi solaire (le soleil plein Sud) arrive plus tôt à l'Est de Greenwich. S'y ajoute l'<b>équation du temps</b> E : le vrai soleil avance ou retarde de −14 à +16 min sur un soleil parfaitement régulier, à cause de l'orbite elliptique et de l'axe penché.</p>
+      <div class="formule">E = 229,2 × (0,000075 + 0,001868 cos B − 0,032077 sin B − 0,014615 cos 2B − 0,04089 sin 2B)   (min)
+heure solaire  ts = t(UTC) + longitude/15 + E/60
+angle horaire  ω = 15° × (ts − 12)          négatif le matin, positif l'après-midi</div>
+      <p><b>3. La géométrie : la latitude φ.</b> On écrit la direction du soleil dans le repère de l'équateur, puis on tourne ce repère de (90° − φ) autour de l'axe Est–Ouest pour passer au repère du lieu (Est, Nord, haut). Il en sort :</p>
+      <div class="formule">sin h = sin φ · sin δ + cos φ · cos δ · cos ω
+azimut a = 180° + atan2( sin ω ,  cos ω · sin φ − tan δ · cos φ )
+vecteur « vers le soleil »  s = (cos h · sin a ;  cos h · cos a ;  sin h)     (Est, Nord, haut)</div>
+      <p><b>Un repère à garder en tête.</b> À midi solaire, ω = 0 et sin h = cos(φ − δ) : <b>h = 90° − φ + δ</b>. À Toulouse (φ = 43,6°) le 21 juin : 90 − 43,6 + 23,4 ≈ 70°. Le 21 décembre : ≈ 23°. En été, le soleil de midi est donc très haut : il tape surtout sur le toit, et seulement en biais sur une façade Sud. Midi solaire tombe vers 14 h à l'heure d'été à Toulouse (heure d'été + 2 h, longitude 1,4° E, équation du temps).</p>
+
+      <h2>22. Ce que reçoit une paroi : direct, diffus, réfléchi</h2>
+      <p>Une paroi est définie par son inclinaison β (0° = horizontale tournée vers le ciel, 90° = verticale) et son azimut γ. Sa <b>normale</b> (le vecteur perpendiculaire, vers l'extérieur) vaut n = (sin β · sin γ ; sin β · cos γ ; cos β).</p>
+      <p><b>Le direct.</b> Un faisceau de Gbn W/m² qui arrive de biais s'étale sur une plus grande surface : la paroi n'en reçoit que la projection, <b>Gbn × cos θ</b>, θ étant l'angle entre le soleil et la normale. Et cos θ n'est rien d'autre que le <b>produit scalaire</b> s · n. Si cos θ &lt; 0, le soleil est derrière la paroi : pas de direct. (C'est la même raison qui fait qu'il fait froid l'hiver : le soleil bas arrive en biais sur le sol.)</p>
+      <p><b>Le diffus</b> (modèle « ciel isotrope » de Liu et Jordan, 1963) : on suppose que le ciel brille pareil dans toutes les directions. Une paroi ne voit qu'une partie du ciel : tout le ciel à plat, la moitié debout. C'est le <b>facteur de vue</b> (1 + cos β)/2.</p>
+      <p><b>Le réfléchi</b> : le sol renvoie une part ρ (l'<b>albédo</b>, 0,2 pour de l'herbe (H)) du rayonnement global horizontal Gh, et la paroi voit une part (1 − cos β)/2 du sol.</p>
+      <div class="formule">direct    Ib = Gbn × max(0 ; cos θ)          cos θ = s · n
+diffus    Id = Gdh × (1 + cos β) / 2           mur : Gdh / 2      toit plat : Gdh
+réfléchi  Ir = ρ × Gh × (1 − cos β) / 2        Gh = Gbn × sin h + Gdh
+total     I = Ib + Id + Ir                      [W/m²]
+Équation aux dimensions : W/m² × (sans dimension) = W/m²</div>
+      <p><b>Ce que ça donne en été</b> (Toulouse, année type, juin → août) : l'Ouest reçoit environ <b>10 % de plus</b> que le Sud, et le toit encore bien plus. En septembre, le soleil redescend et le Sud reprend l'avantage. Et l'Ouest prend son soleil l'après-midi, au moment où l'air est déjà le plus chaud : c'est la façade la plus dangereuse pour le confort d'été.</p>
+      <p><b>(H) Limite</b> : le vrai ciel n'est pas isotrope (il est plus brillant autour du soleil et près de l'horizon). PVGIS utilise le modèle de Muneer ; l'écart sur le diffus se voit dans la validation (section 25).</p>
+
+      <h2>23. Ce qui entre par les fenêtres</h2>
+      <p>Une fenêtre au soleil est un <b>radiateur</b>. La chaleur qui entre dépend de quatre choses : ce que la vitre reçoit, sa surface utile, la part de l'énergie que le vitrage laisse entrer (le <b>facteur solaire g</b>), et la protection solaire.</p>
+      <div class="formule">Φ = I_vitre × A × (1 − Ff) × g × Fw × Fc                        [W]
+  I_vitre = direct × (part au soleil) + diffus + réfléchi        W/m²
+  A   surface de la baie (m²)          Ff  part du cadre, opaque (H 0,3, NF EN ISO 13790)
+  g   facteur solaire du vitrage        Fw  le vitrage laisse moins passer en biais (H 0,9, NF EN ISO 13790)
+  Fc  facteur de la protection : 1 relevée ; baissée dès que la façade reçoit plus de 200 W/m² (H)</div>
+      <p><b>Pourquoi une protection intérieure marche mal.</b> Le store intérieur arrête la lumière <b>après</b> la vitre : le rayonnement est déjà entré, il chauffe le store, qui chauffe l'air. Le volet ou le BSO l'arrêtent <b>avant</b> : la chaleur reste dehors. D'où les ordres de grandeur (H, à vérifier dans NF EN ISO 52022-1) : Fc ≈ 0,65 pour un store intérieur, 0,15 à 0,30 pour une protection extérieure baissée aux trois quarts.</p>
+      <p><b>La gestion (H).</b> Une protection n'agit que si elle est baissée. Le simulateur la baisse « automatiquement » au-dessus du seuil (modifiable dans Données). C'est optimiste pour un logement vide la journée : personne n'est là pour baisser les volets. Sur la maquette, tu vois les volets descendre quand la façade chauffe.</p>
+      <p><b>La casquette.</b> Dans le plan vertical perpendiculaire à la façade, le soleil fait l'<b>angle de profil Ω</b>, avec tan Ω = tan h / cos(a − γ). L'ombre d'une casquette de profondeur d, posée à e au-dessus de la vitre de hauteur H, descend de d × tan Ω :</p>
+      <div class="formule">part de la vitre au soleil = 1 − (d × tan Ω − e) / H        (bornée entre 0 et 1, sur le direct seulement)
+Exemple : h = 60°, soleil plein Sud, d = 0,5 m, e = 0,2 m, H = 1,35 m
+  tan Ω = tan 60° = 1,732 ; ombre = 0,5 × 1,732 − 0,2 = 0,666 m ; part au soleil = 1 − 0,666 / 1,35 = 0,507</div>
+      <p>Au Sud en été, le soleil est haut et en face : Ω est grand, la casquette marche très bien. À l'Ouest, le soleil du soir est bas : il passe dessous. (H) Casquette infiniment longue, diffus non réduit.</p>
+
+      <h2>24. Ce qui entre par les murs et le toit, et par les occupants</h2>
+      <p><b>Les parois opaques</b> (NF EN ISO 13790 § 11.3.4 (H)). Le soleil chauffe la face extérieure, qui absorbe une part α du rayonnement (α = 0,4 pour une couleur claire, 0,8 pour une sombre (H)). Presque tout repart dehors, par convection et rayonnement ; seule une petite part traverse la paroi, dans le rapport <b>Rse / Rtotale = Rse × U</b>. Très isolé, presque rien n'entre. À l'inverse, la paroi rayonne vers le ciel, plus froid que l'air, jour et nuit : c'est le second terme.</p>
+      <div class="formule">Φ = α × Rse × U × A × I  −  Fciel × Rse × U × A × hr × Δθer           [W]
+  Rse = 0,04 m²·K/W ; hr = 5 ε = 4,5 W/(m²·K) (ε = 0,9) ; Δθer = 11 K (climat tempéré) (H)
+  Fciel = (1 + cos β)/2 : 1 pour un toit plat, 0,5 pour un mur
+Exemple : mur clair (α 0,4), U 0,5, 20 m², 500 W/m²
+  soleil 0,4 × 0,04 × 0,5 × 20 × 500 = 80 W ; ciel 0,5 × 0,04 × 0,5 × 20 × 4,5 × 11 = 9,9 W ; Φ = 70,1 W
+  Le même mur 4 fois plus isolé (U 0,125) : 17,5 W.</div>
+      <p><b>(H) Combles perdus</b> : on applique la formule au plafond isolé. En vrai, le comble chauffe sous les tuiles et rayonne sur le plafond ; ce sera repris avec les parois en différences finies (étape 8). Ici, l'effet de la toiture sur le confort est probablement <b>sous-estimé</b> pour une couverture sombre mal ventilée.</p>
+      <p><b>Les apports internes.</b> Une personne au repos dégage environ 70 à 80 W de chaleur sensible (celle qui chauffe l'air ; la vapeur d'eau de la respiration, chaleur latente, ne compte pas ici). Les appareils et l'éclairage s'y ajoutent. Chaque usage a une puissance de pointe (W/m² de plancher) et des profils horaires de 0 à 1, en semaine et le week-end, en heure légale. Les écoles et les bureaux ferment l'été (H). Toutes ces valeurs sont des <b>exemples (H)</b>, visibles et modifiables dans Données, à remplacer par des scénarios sourcés (RE2020 Th-BCE, NF EN 16798-1).</p>
+
+      <h2>25. Comment on sait que c'est juste</h2>
+      <ul>
+        <li><b>La position du soleil</b> est comparée, toute l'année, à Toulouse et à Paris, à une méthode indépendante (l'algorithme de la NOAA, d'après J. Meeus) : moins de 0,5° d'écart sur la hauteur et 1,5° sur l'azimut.</li>
+        <li><b>La convention de temps</b> est vérifiée sur les données elles-mêmes : avec le soleil placé à heure + 0,17 h, Gbn × sin h + Gdh retrouve le rayonnement global horizontal publié par PVGIS à 2 W/m² près en moyenne (9 W/m² sans ce décalage, 17 W/m² à la demi-heure).</li>
+        <li><b>Le rayonnement sur les façades</b> est comparé au calcul de PVGIS lui-même (Toulouse, 2022, façades verticales Sud et Ouest, mai → septembre) : le <b>direct</b> colle à moins de 2 % chaque mois ; le <b>total</b> à moins de 4 % sur l'été (un peu plus certains mois : le modèle de ciel diffère, section 22).</li>
+        <li><b>L'heure type</b> (section 26) et les exemples des sections 23 et 24 sont refaits par les tests à chaque modification.</li>
+        <li><b>Les sens physiques</b> : en été, l'Ouest reçoit plus que le Sud, le toit plus que les façades ; des BSO partout divisent au moins par 2 ce qui entre par les fenêtres ; une casquette au Sud le réduit ; un mur 4 fois plus isolé laisse passer 4 fois moins de soleil.</li>
+      </ul>
+
+      <h2>26. Exemple refait à la main : Toulouse, 21 juillet, 16 h</h2>
+      <p>C'est l'heure affichée par défaut sur la maquette. Ouvre « L'heure affichée calculée pas à pas » sous la maquette : tu retrouves les mêmes nombres.</p>
+      <div class="formule">Le temps
+  16 h à l'heure d'été = 14 h UTC ; rayonnement mesuré à 14 + 0,1746 = 14,1746 h ; jour n = 202
+  B = 360 × (201 + 2,1746/24) / 365 = 198,336°
+  δ = 20,620°        E = −6,360 min
+  ts = 14,1746 + 1,444/15 + (−6,360/60) = 14,1746 + 0,0963 − 0,1060 = 14,1649 h
+  ω = 15 × (14,1649 − 12) = 32,473°
+Le soleil (φ = 43,604°)
+  sin h = sin 43,604 × sin 20,620 + cos 43,604 × cos 20,620 × cos 32,473
+        = 0,6897 × 0,3522 + 0,7241 × 0,9359 × 0,8436 = 0,2429 + 0,5717 = 0,8146  →  h = 54,55°
+  a = 240,05° (Ouest-Sud-Ouest)
+  s = (cos h · sin a ; cos h · cos a ; sin h) = (0,5800 × (−0,8664) ; 0,5800 × (−0,4993) ; 0,8146)
+    = (−0,5025 ; −0,2896 ; 0,8146)
+La météo de l'heure : T = 32,0 °C ; Gbn = 792 W/m² ; Gdh = 153 W/m²
+  Gh = 792 × 0,8146 + 153 = 798,2 W/m²
+Façade Ouest (n = (−1 ; 0 ; 0))
+  cos θ = s · n = 0,5025
+  direct 792 × 0,5025 = 398,0 ; diffus 153 / 2 = 76,5 ; réfléchi 0,2 × 798,2 / 2 = 79,8
+  I = 554,3 W/m²       (Sud : cos θ = 0,2896 → 385,6 W/m² ; Est et Nord : 156,3 W/m², sans direct)
+Fenêtre Ouest de la maison d'exemple : 3 m², g = 0,6
+  coefficient (1 − 0,3) × 0,6 × 0,9 = 0,378
+  sans protection : 554,3 × 3 × 0,378 = 628,6 W   (plus de 8 personnes au repos !)
+  volet roulant baissé (554 > 200 W/m²), Fc = 0,25 : 157,1 W</div>
+
+      <h2>27. Le soleil sur la maquette, et les limites (H)</h2>
+      <p><b>L'ombre portée.</b> Chaque sommet P de la maison est projeté sur le sol le long des rayons : P' = P − s × (z_P / s_z). La maison étant convexe, son ombre est l'<b>enveloppe convexe</b> de ces points (algorithme de la chaîne monotone). Les façades se teintent d'orange en proportion des W/m² reçus ; la lumière de la maquette est le vrai vecteur s.</p>
+      <ul>
+        <li>(H) Ciel isotrope ; albédo 0,2 ; Ff 0,3 ; Fw 0,9 ; Fc et seuil de gestion d'exemple.</li>
+        <li>(H) Pas de masques lointains (relief, immeubles, arbres) ni d'ombre de la maison sur elle-même (elle est convexe : sans objet, sauf débords).</li>
+        <li>(H) Casquette infiniment longue, diffus non réduit ; pas de joues latérales.</li>
+        <li>(H) Heure d'été du 1er avril au 31 octobre ; l'année type commence un lundi.</li>
+        <li>(H) Combles perdus : le comble tampon n'est pas modélisé.</li>
+        <li>(H) Apports internes d'exemple ; seulement la chaleur sensible.</li>
+        <li>Année type = été normal ; pas encore de canicule ni de climat futur.</li>
+      </ul>
+      <p><b>Et ensuite (étape 3).</b> On sait maintenant, heure par heure, combien de watts entrent. Le modèle horaire 5R1C dira <b>quelle température</b> il fera dedans : la chaleur qui entre, moins celle que les parois et l'air évacuent, stockée en partie dans la masse (Cm, chapitre 1 bis).</p>
+
+      <h2>28. Teste-toi</h2>
       <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
       <div id="teste-toi"></div>
 
-      <h2>21. Où est le code</h2>
+      <h2>29. Où est le code</h2>
       <ul>
         <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
         <li><code>calcul/calcul-batiment.js</code> : chapitre 1 bis, la maison (surfaces, H, inertie).</li>
@@ -543,8 +664,12 @@ Flux qui entre dans la pièce   q = G0 × (T1 − Ta)        Face intérieure   
         <li><code>affichage/schemas.js</code> et <code>affichage/graphiques.js</code> : les dessins (aucun calcul).</li>
         <li><code>affichage/interface.js</code> : l'affichage et les boutons (aucun calcul).</li>
         <li><code>donnees/confort-materiaux.js</code> : les matériaux, parois et local d'exemple (publics).</li>
+        <li><code>calcul/calcul-soleil.js</code> : chapitre 2, la météo, le soleil, les apports (fenêtres, parois, occupants).</li>
+        <li><code>affichage/soleil.js</code> : le soleil sur la maquette, la barre jour · heure, les cartes du soleil (aucun calcul).</li>
+        <li><code>donnees/confort-meteo.js</code> et <code>donnees/meteo/*.js</code> : les 10 villes (PVGIS) ; <code>donnees/meteo/preparer-meteo.js</code> les fabrique.</li>
         <li><code>tests/confort-parois.test.js</code> : la validation (différences finies, exemple à la main, limites).</li>
-        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>, <code>docs/etape-1ter.md</code>.</li>
+        <li><code>tests/confort-soleil.test.js</code> : la validation du soleil (NOAA, PVGIS, heure type).</li>
+        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>, <code>docs/etape-1ter.md</code>, <code>docs/etape-2.md</code>.</li>
       </ul>
     </div>
   </section>
@@ -579,11 +704,37 @@ Flux qui entre dans la pièce   q = G0 × (T1 − Ta)        Face intérieure   
     </div>
 
     <div class="carte">
+      <div class="carte-titre"><h2>Protections solaires</h2><span id="stats-protections" class="aide"></span></div>
+      <p class="aide" style="margin:-4px 0 12px">Fc : part du rayonnement qui passe encore quand la protection est <b>baissée</b> (1 = rien n'est arrêté). La protection se baisse dès que la façade reçoit plus du seuil. Valeurs d'<b>exemple</b> (H) : à vérifier (NF EN ISO 52022-1, règles Th-S, fiches produits).</p>
+      <div class="defilement">
+        <table class="table-edition">
+          <thead><tr><th>Protection</th><th class="num">Fc</th><th>Source</th><th>Mois</th><th>Statut</th></tr></thead>
+          <tbody id="corps-protections"></tbody>
+        </table>
+      </div>
+      <div class="champ" style="max-width:260px;margin-top:12px"><label for="seuil-protection">Seuil de baisse (W/m² sur la façade) (H)</label><input type="text" inputmode="decimal" id="seuil-protection"></div>
+    </div>
+
+    <div class="carte">
+      <div class="carte-titre"><h2>Météo</h2><span class="aide" id="stats-meteo"></span></div>
+      <p class="aide" style="margin:-4px 0 12px">Année météo type (TMY) de <b>PVGIS 5.3</b> (Commission européenne, JRC) : pour chaque mois, le mois réel le plus représentatif de 2005 à 2023. 8 760 heures : température, humidité, rayonnement direct et diffus, vent. Une année type représente un été <b>normal</b>, pas une canicule. Licence (H) : réutilisation autorisée en citant la source (décision 2011/833/UE), à vérifier sur la page « Legal notice » de PVGIS.</p>
+      <div class="defilement"><table id="table-meteo"></table></div>
+    </div>
+
+    <div class="carte">
+      <div class="carte-titre"><h2>Apports internes</h2><span class="badge exemple">(H) exemples</span></div>
+      <p class="aide" style="margin:-4px 0 12px">Puissance de pointe (W par m² de plancher) × profil horaire (de 0 à 1, en heure légale). Seulement la chaleur <b>sensible</b> (celle qui chauffe l'air). Valeurs d'exemple, à remplacer par des scénarios sourcés (RE2020 Th-BCE, NF EN 16798-1).</p>
+      <div class="defilement"><table id="table-scenarios"></table></div>
+    </div>
+
+    <div class="carte">
       <h2>Valeurs de norme utilisées</h2>
       <h3>Résistances superficielles (NF EN ISO 6946)</h3>
       <div class="defilement"><table id="table-rs"></table></div>
       <h3 style="margin-top:14px">Classes d'inertie (NF EN ISO 13790:2008, tableau 12) <span class="badge exemple">(H) à vérifier</span></h3>
       <div class="defilement"><table id="table-classes"></table></div>
+      <h3 style="margin-top:14px">Soleil et apports (chapitre 2) <span class="badge exemple">(H) à vérifier</span></h3>
+      <div class="defilement"><table id="table-soleil"></table></div>
     </div>
   </section>
 </main>
@@ -592,20 +743,23 @@ Flux qui entre dans la pièce   q = G0 × (T1 − Ta)        Face intérieure   
   Outil personnel d'aide à l'audit énergétique. Ordres de grandeur pour comprendre et comparer des variantes ; la STD reste la référence.
 </footer>
 
-<script src="commun/commun.js?v=20261110"></script>
-<script src="donnees/confort-materiaux.js?v=20261110"></script>
-<script src="donnees/confort-projet.js?v=20261110"></script>
-<script src="calcul/calcul-parois.js?v=20261110"></script>
-<script src="calcul/calcul-batiment.js?v=20261110"></script>
-<script src="calcul/calcul-transitoire.js?v=20261110"></script>
-<script src="calcul/calcul.js?v=20261110"></script>
-<script src="affichage/schemas.js?v=20261110"></script>
-<script src="affichage/graphiques.js?v=20261110"></script>
-<script src="affichage/exercices.js?v=20261110"></script>
-<script src="donnees/lexique.js?v=20261110"></script>
-<script src="affichage/maison3d.js?v=20261110"></script>
-<script src="affichage/interface.js?v=20261110"></script>
-<script src="affichage/labo.js?v=20261110"></script>
-<script src="affichage/projet.js?v=20261110"></script>
+<script src="commun/commun.js?v=20261111"></script>
+<script src="donnees/confort-materiaux.js?v=20261111"></script>
+<script src="donnees/confort-projet.js?v=20261111"></script>
+<script src="donnees/confort-meteo.js?v=20261111"></script>
+<script src="calcul/calcul-parois.js?v=20261111"></script>
+<script src="calcul/calcul-batiment.js?v=20261111"></script>
+<script src="calcul/calcul-transitoire.js?v=20261111"></script>
+<script src="calcul/calcul-soleil.js?v=20261111"></script>
+<script src="calcul/calcul.js?v=20261111"></script>
+<script src="affichage/schemas.js?v=20261111"></script>
+<script src="affichage/graphiques.js?v=20261111"></script>
+<script src="affichage/exercices.js?v=20261111"></script>
+<script src="donnees/lexique.js?v=20261111"></script>
+<script src="affichage/maison3d.js?v=20261111"></script>
+<script src="affichage/interface.js?v=20261111"></script>
+<script src="affichage/labo.js?v=20261111"></script>
+<script src="affichage/projet.js?v=20261111"></script>
+<script src="affichage/soleil.js?v=20261111"></script>
 </body>
 </html>

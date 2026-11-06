@@ -20,7 +20,7 @@
     const p = Math.pow(10, Math.floor(Math.log10(brut)));
     const pas = [1, 2, 2.5, 5, 10].map(function (k) { return k * p; }).find(function (s) { return s >= brut; });
     const liste = [];
-    for (let v = Math.ceil(min / pas) * pas; v <= max + pas * 1e-9; v += pas) liste.push(Math.round(v / pas) * pas);
+    for (let v = Math.ceil(min / pas) * pas; v <= max + pas * 1e-9; v += pas) liste.push(Math.round(v / pas) * pas || 0);   // || 0 : pas de « −0 »
     return { pas: pas, liste: liste };
   }
 

@@ -64,15 +64,21 @@ préconisations, validation, découpage en 8 étapes).
     calcul-parois.js          ch. 1 : U, masse, δ, matrices ISO 13786, κ, inertie du local (fait)
     calcul-batiment.js        ch. 1 bis : la maison — orientation, surfaces, volume, H = Σ U·A, inertie (fait)
     calcul-transitoire.js     ch. 1 ter : le labo — différences finies, schéma implicite, pièce libre (fait)
-    calcul-soleil.js          ch. 2 : météo, soleil, apports (étape 2)
+    calcul-soleil.js          ch. 2 : météo, position du soleil (Spencer), éclairement des parois (ciel isotrope),
+                              fenêtres (g, Ff, Fw, Fc, casquette), parois opaques (sol-air), apports internes,
+                              séries horaires apportsHoraires (fait)
     calcul-5r1c.js            ch. 3 : modèle horaire (étape 3) …
   affichage/                  projet.js (onglet Projet : saisie simple + résultat, AUCUN calcul),
                               maison3d.js (maquette 3D SVG faite main : projection orthogonale, faces visibles n·c > 0),
                               interface.js (onglet Atelier parois, AUCUN calcul), schemas.js et graphiques.js (SVG),
                               labo.js (labo animé de l'atelier : mur en coupe, glisser-déposer, horloge ; AUCUN calcul),
+                              soleil.js (le soleil sur la maquette, barre jour · heure, cartes soleil et apports ; AUCUN calcul ;
+                              lit l'état de projet.js via window.ConfortProjet et l'événement « confort:projet »),
                               exercices.js (Teste-toi ; la bonne réponse vient TOUJOURS de calcul/), site.css (style du site)
   donnees/                    données PUBLIQUES d'exemple (confort-materiaux.js, confort-projet.js : maison d'exemple,
-                              usages, fenêtres Uw/g, protections ; lexique.js ; météo à venir)
+                              usages, fenêtres Uw/g, protections Fc, couleurs α, scénarios d'apports internes ; lexique.js ;
+                              confort-meteo.js : les 10 villes ; meteo/<ville>.js : 8 760 h PVGIS TMY, chargées à la demande
+                              par une balise <script> ; meteo/preparer-meteo.js les régénère depuis les JSON PVGIS)
   docs/                       cahier des charges et fiches d'étape
   tests/*.test.js             node --test ; tests/navigateur.js (Playwright, à la main)
   ```
@@ -88,9 +94,11 @@ préconisations, validation, découpage en 8 étapes).
 - Les données d'Émile vivent dans le `localStorage`. Le site est sur la même origine que la boîte à outils
   (emilemonteil46600-arch.github.io) : les deux sites **partagent le même stockage** (utile à l'étape 5 pour lire
   les ratios du chiffrage `bao.chiffrage.biblio.v1`), d'où le préfixe `bao.confort.*`.
-- Clés (ne **jamais** les renommer sans migration) : `bao.confort.projet.v1` (la maison), `bao.confort.paroi.v1`, `bao.confort.parois.v1`,
-  `bao.confort.local.v1`, `bao.confort.materiaux.v1`, `bao.confort.reglages.v1` (onde + types de fenêtres ; l'atelier et
-  le projet y écrivent chacun leur partie : toujours relire avant d'écrire) ; `bao.confort.onglet` (affichage).
+- Clés (ne **jamais** les renommer sans migration) : `bao.confort.projet.v1` (la maison, dont `ville`, `casquettes`, `couleurs`),
+  `bao.confort.paroi.v1`, `bao.confort.parois.v1`, `bao.confort.local.v1`, `bao.confort.materiaux.v1`,
+  `bao.confort.reglages.v1` (onde + types de fenêtres + `protections` + `seuilProtection` ; l'atelier et le projet y écrivent
+  chacun leur partie : toujours relire avant d'écrire) ; affichage seulement (hors sauvegarde) : `bao.confort.onglet`,
+  `bao.confort.labo.affichage`, `bao.confort.soleil.affichage` (jour et heure affichés).
   Toute nouvelle clé de données va dans `BAO.CLES_DONNEES` (vérifié par `tests/commun.test.js`).
 - Sauvegarde complète et restauration : onglet Données › « Mes données ».
 
@@ -109,12 +117,23 @@ préconisations, validation, découpage en 8 étapes).
      q = U × ΔT ; énergie conservée à 1e-9 ; béton 18 + PSE 14, 20 → 35 °C, pièce libre 50 m³ 0,5 vol/h :
      ITE 27,8 °C après 72 h (mi-chemin en 20,5 h) / ITI 35,0 °C (2 h) ; t ≈ e²/a : béton 20 cm ≈ 11 h ;
    - maquette 3D : caméra orthonormée et directe (r × h = c), Est à droite vu depuis le Sud (pas de miroir) ;
+   - soleil (étape 2) : Spencer = NOAA/Meeus à < 0,5° (hauteur) ; décalage PVGIS 0,1746 h vérifié (écart 2 W/m² sur G(h)) ;
+     façades Sud / Ouest = PVGIS seriescalc Toulouse 2022 : direct < 3 % par mois, total < 4 % sur mai → sept.
+     (`tests/references/pvgis-toulouse-2022-ete.json`) ; heure type Toulouse 21 juillet 16 h : h = 54,55°, a = 240,05°,
+     Ouest 554,3 W/m², fenêtre 3 m² g 0,6 → 628,6 W, volet Fc 0,25 → 157,1 W ; casquette h 60° d 0,5 → 0,507 ;
+     mur α 0,4 U 0,5 20 m² 500 W/m² → 70,1 W ; maison d'exemple Toulouse juin → sept. : fenêtres 816 kWh,
+     internes 1 092, murs 59, toit 79 (sans protection : 1 745) ;
    - Teste-toi : 40 tirages par exercice.
 2. `node tests/navigateur.js` : aucune erreur console, 390 px clair / sombre, exemples à l'écran, sauvegarde / restauration.
 3. **Changer le numéro de version `?v=AAAAMMJJ`** de TOUS les scripts et feuilles de style dans `index.html` à chaque
    mise en ligne (un test vérifie qu'ils ont tous le même). Sinon le navigateur garde d'anciens fichiers en mémoire
    et la page reste vide (bug du 07/11/2026).
 4. Si un exemple de Méthode change : mettre à jour **en même temps** la Méthode, le test, la fiche et ce fichier.
+
+## Réseau (environnement cloud)
+
+- Environnement **« simulateur-confort-ete »** (personnel, créé le 06/11/2026) : il autorise `re.jrc.ec.europa.eu` (PVGIS),
+  pour régénérer la météo (`donnees/meteo/preparer-meteo.js`). Le site lui-même n'a besoin d'aucun réseau.
 
 ## Sessions et contexte (expliqué à Émile le 07/11/2026)
 
@@ -141,7 +160,7 @@ préconisations, validation, découpage en 8 étapes).
   pour comprendre (le labo de l'atelier). Continuer dans cet esprit : chaque notion importante peut avoir son « labo ».
 - Ordre : 1 bis (maison 3D) → 1 ter (labo animé) → 2 (météo + soleil sur la maquette) → 3 (5R1C) → 4 (indicateurs + note) → 5…7.
 
-## État au 07/11/2026
+## État au 06/11/2026 (soir)
 
 | Étape | État |
 |---|---|
@@ -149,4 +168,7 @@ préconisations, validation, découpage en 8 étapes).
 | 1. Parois | **Fait, en attente de l'accord d'Émile.** 23 matériaux et 13 parois d'exemple, U, masse, δ, matrices ISO 13786 → \|Y12\|, f, Δt, Y11, κ1, κ2, coupe SVG avec l'onde, journée chaude (2 graphiques), « Retourner la paroi », parois enregistrées et comparées, inertie du local (Cm, Am, classe ISO 13790 (H)), Méthode-cours en 15 sections, 5 exercices, 26 mots de lexique. Validé par différences finies. |
 | 1 bis. Maison 3D | **Fait, en attente de l'accord d'Émile** (il a reporté les 3 questions de l'étape 1). Refonte visuelle, onglet Projet (saisie 6 étapes, maquette 3D faite main, rose des fenêtres, H par poste, inertie de la maison, détail des calculs), 2 exercices, 2 mots de lexique, Méthode § 14 à 18. Fiche `docs/etape-1bis.md`. |
 | 1 ter. Labo animé | **Fait, en attente de l'accord d'Émile** (demande du 07/11/2026 : « voir la température avancer dans le mur, puis dans la pièce »). Labo dans l'atelier (refait plus visuel le 07/11 : textures de matériaux, dégradé thermique, particules de flux, soleil / lune, horloge dans l'image, matériaux à glisser dans le mur, réglages repliés) : palette de couches, glisser-déposer, mur en coupe coloré par la température + courbe θ(x) + flèche de flux, horloge, coup de chaud / journées d'été, pièce climatisée / libre, graphique avec curseur, contrôle d'énergie. Méthode § 19, 1 exercice, 2 mots de lexique. Fiche `docs/etape-1ter.md`. |
-| 2 à 7 | À faire, dans l'ordre du cahier des charges. Choix météo (étape 0) : PVGIS, 7 villes, 1er mai → 30 sept., canicule 2019 / 2022 si disponible, licence à vérifier (H). |
+| Poubelle du labo | PR « Labo : une poubelle » (06/11) : 🗑 sur chaque couche, tirer une couche hors du mur la retire. |
+| 2. Météo + soleil | **Fait, en attente de l'accord d'Émile.** 10 villes PVGIS TMY (8 760 h), position du soleil, éclairement des parois, apports fenêtres / murs / toit / internes heure par heure ; maquette : vrai soleil, course, ombre portée, façades qui chauffent, volets qui se baissent, casquettes ; barre jour · heure animée ; cartes « Le soleil sur ta maison » et « Ce qui entre » ; détail pas à pas de l'heure ; Données : protections (Fc, seuil), météo, scénarios. Méthode § 20 à 27, 3 exercices + 3 questions, 13 mots de lexique. Fiche `docs/etape-2.md`. **Pas de canicule** : PVGIS donne les années réelles mais sans humidité (à décider). |
+| Visuel (demande du 06/11) | À faire après l'étape 2 : refaire plus beau l'onglet Projet (saisie + maison) et le labo. |
+| 3 à 7 | À faire, dans l'ordre du cahier des charges. |

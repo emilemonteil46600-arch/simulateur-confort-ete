@@ -10,6 +10,7 @@ sourcée et vérifiée. Il complète une STD (Pléiades) pour tester vite des va
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Parois couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), inertie du local (NF EN ISO 13790), validées par différences finies | ✅ |
+| 1 bis | La maison en 3D (faite main, sans bibliothèque) : volume, toiture, orientation, fenêtres par façade ; déperditions H = Σ U·A et inertie de toute la maison | ✅ |
 | 2 | Météo embarquée, soleil sur chaque façade, apports solaires et internes | à venir |
 | 3 | Modèle horaire 5R1C : températures d'air, radiante, opérative | à venir |
 | 4 | Indicateurs : heures > 26/28 °C, degrés-heures, confort adaptatif, PMV/PPD, Givoni, score sur 100 | à venir |

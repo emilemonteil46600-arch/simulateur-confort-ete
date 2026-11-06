@@ -44,10 +44,28 @@ async function nouvellePage(navigateur, options) {
     await page.context().close();
   }
 
-  console.log('2. Étape 1 : les parois');
-  let page = await nouvellePage(navigateur, { viewport: { width: 1280, height: 900 } });
+  console.log('2. Étape 1 bis : la maison en 3D');
+  let page = await nouvellePage(navigateur, { viewport: { width: 1440, height: 900 } });
   await page.goto(URL_SITE);
   await page.click('[data-onglet="calcul"]');
+  const resProjet = function () { return page.textContent('#resultat-projet').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  ok(await page.$$eval('#maison3d svg .m-face', function (f) { return f.length; }) >= 3, 'Maquette 3D dessinée (faces visibles)');
+  ok((await resProjet()).includes('79 W/K') && (await resProjet()).includes('Légère'), 'Maison d\'exemple : H = 79 W/K, inertie « Légère »');
+  ok((await page.textContent('#chiffres-maison')).replace(/\s/g, ' ').includes('80 m²'), 'Surface de plancher 80 m² sous la maquette');
+  await page.click('#maison3d .m-face[data-cible="A"] .m-contour', { force: true });
+  ok(await page.$('.facade-ligne[data-facade="A"].choisie') !== null && await page.$('#maison3d .m-face.m-choisi[data-cible="A"]') !== null, 'Clic sur la façade A : sélectionnée dans la maquette et dans la saisie');
+  await page.click('[data-niveaux="2"]');
+  ok((await page.textContent('#chiffres-maison')).replace(/\s/g, ' ').includes('160 m²'), '2 niveaux : 160 m² de plancher');
+  await page.click('details[data-pas="toiture"] summary');
+  await page.click('[data-toit="quatre-pans"]');
+  ok(await page.$$eval('#maison3d svg .m-toit', function (f) { return f.length; }) >= 2, 'Toit 4 pans dessiné');
+  await page.click('[data-combles="amenages"]');
+  ok(await page.inputValue('#p-toiture') === 'rampants-laine', 'Combles aménagés : la toiture passe en rampants');
+  await page.click('#btn-projet-exemple');
+  ok((await resProjet()).includes('79 W/K'), 'Retour à la maison d\'exemple');
+
+  console.log('3. Atelier parois (étape 1)');
+  await page.click('[data-onglet="atelier"]');
   const resultat = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };
   ok((await resultat()).includes('0,252') && (await resultat()).includes('7,7'), 'Béton 18 + ITE PSE 14 : U = 0,252, Δt ≈ 7,7 h');
   ok(await page.$('#schema svg .sch-onde') !== null, 'Coupe de la paroi avec la courbe de l\'onde');
@@ -66,7 +84,7 @@ async function nouvellePage(navigateur, options) {
   await page.click('#btn-enregistrer');
   ok((await page.textContent('#comparaison')).includes('Façade test'), 'Mes parois : la paroi enregistrée apparaît dans la comparaison');
 
-  console.log('3. Méthode, lexique, Teste-toi');
+  console.log('4. Méthode, lexique, Teste-toi');
   await page.click('[data-onglet="methode"]');
   const termes = await page.$$eval('#onglet-methode .terme', function (t) { return t.length; });
   ok(termes >= 10, 'Méthode : ' + termes + ' mots reliés au lexique');
@@ -77,14 +95,14 @@ async function nouvellePage(navigateur, options) {
   await page.click('#teste-toi .exercice[data-index="0"] [data-action="verifier"]');
   ok((await page.textContent('#teste-toi .exercice[data-index="0"] .exercice-retour')).includes('Pas tout à fait'), 'Mauvaise réponse : la correction s\'affiche');
 
-  console.log('4. Sauvegarde complète et restauration');
+  console.log('5. Sauvegarde complète et restauration');
   await page.click('[data-onglet="donnees"]');
   const [sauvegarde] = await Promise.all([page.waitForEvent('download'), page.click('#mes-donnees [data-action="sauver"]')]);
   const fichier = path.join(os.tmpdir(), sauvegarde.suggestedFilename());
   await sauvegarde.saveAs(fichier);
   const contenu = JSON.parse(fs.readFileSync(fichier, 'utf8'));
-  ok(contenu.format === 'bao-sauvegarde-complete' && contenu.donnees['bao.confort.paroi.v1'] && contenu.donnees['bao.confort.parois.v1'],
-    'Sauvegarde complète : paroi en cours + parois enregistrées (' + Object.keys(contenu.donnees).length + ' éléments)');
+  ok(contenu.format === 'bao-sauvegarde-complete' && contenu.donnees['bao.confort.paroi.v1'] && contenu.donnees['bao.confort.parois.v1'] && contenu.donnees['bao.confort.projet.v1'],
+    'Sauvegarde complète : projet + paroi en cours + parois enregistrées (' + Object.keys(contenu.donnees).length + ' éléments)');
   await page.context().close();
 
   page = await nouvellePage(navigateur, { viewport: { width: 1280, height: 900 } });

@@ -1,0 +1,243 @@
+/* ==========================================================
+   Simulateur de confort d'été — style propre au site
+   (chargé après commun/style.css ; couleurs en variables, clair et sombre)
+   ========================================================== */
+/* ---------- Couleurs propres au site ----------
+   --gr-1 / --gr-2 : courbes des graphiques (vérifiées pour le daltonisme, clair et sombre).
+   --m-* : la maquette 3D (murs, toit, vitres, sol, ciel). */
+:root {
+  --gr-1: #c4501b; --gr-2: #1f6fb8;
+  --fond: #eef0f2;
+  --ombre: 0 1px 2px rgba(24, 32, 44, .05), 0 8px 24px rgba(24, 32, 44, .06);
+  --rayon: 14px;
+  --m-mur: #f6f1e7; --m-toit: #b8553a; --m-tuiles: #8f3d27; --m-vitre: #8ec1e3; --m-cadre: #ffffff;
+  --m-sol: #dfe8d4; --m-anneau: #c9d6bd; --m-ciel-haut: #dcebf7; --m-ciel-bas: #f7fafc; --m-trait: #4b4f58;
+  --m-coffre: #6b6f78; --m-store: #d97a3c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gr-1: #e0682f; --gr-2: #3f8ee0;
+    --fond: #111418;
+    --ombre: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .25);
+    --m-mur: #c9c2b5; --m-toit: #9a4a35; --m-tuiles: #6e2f1f; --m-vitre: #4f86ad; --m-cadre: #e8e8e8;
+    --m-sol: #27332a; --m-anneau: #34443a; --m-ciel-haut: #18222e; --m-ciel-bas: #232b35; --m-trait: #1a1c20;
+    --m-coffre: #3d4048; --m-store: #b8622c;
+  }
+}
+
+.indicateurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.indicateur { background: var(--surface-2); border: 1px solid var(--bord); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.indicateur .nom { font-size: .76rem; color: var(--encre-2); }
+.indicateur .val { font-size: 1.25rem; font-weight: 720; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.indicateur .val small { font-size: .74rem; font-weight: 600; color: var(--encre-2); }
+.indicateur .dit { font-size: .74rem; color: var(--encre-3); }
+.table-couches select { min-width: 190px; }
+.table-couches input { width: 70px; text-align: right; }
+.table-couches td.num { white-space: nowrap; }
+.boutons-ligne { display: flex; gap: 2px; justify-content: flex-end; }
+.boutons-ligne .bouton { padding: 2px 7px; }
+.schema-paroi { max-width: 560px; }
+.schema-svg .sch-interieur { fill: var(--surface-2); }
+.schema-svg .sch-couche { stroke: var(--encre-3); stroke-width: .6; }
+.schema-svg .sch-onde { fill: none; stroke: var(--gr-1); stroke-width: 2.2; stroke-linejoin: round; }
+.grille-graphes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 900px) { .grille-graphes { grid-template-columns: minmax(0, 1fr); } }
+.graphique-boite { position: relative; }
+.graphique { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.graphique .gr-grille { stroke: var(--bord); stroke-width: 1; }
+.graphique .gr-zero { stroke: var(--encre-3); stroke-width: 1; }
+.graphique .gr-repere { stroke: var(--encre-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.graphique .gr-texte { fill: var(--encre-2); font-size: 11px; font-family: var(--police); }
+.graphique .gr-ligne { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.graphique .gr-ligne.gr-1 { stroke: var(--gr-1); }
+.graphique .gr-ligne.gr-2 { stroke: var(--gr-2); }
+.graphique .gr-ligne.gr-ref { stroke: var(--encre-3); stroke-dasharray: 5 4; }
+.graphique .gr-reticule { stroke: var(--encre-3); stroke-width: 1; }
+.graphique .gr-point { stroke: var(--surface); stroke-width: 2; }
+.graphique .gr-point.gr-1 { fill: var(--gr-1); }
+.graphique .gr-point.gr-2 { fill: var(--gr-2); }
+.graphique .gr-point.gr-ref { fill: var(--encre-3); }
+.gr-cle { display: inline-block; width: 16px; height: 0; border-top: 2px solid; margin-right: 6px; vertical-align: middle; border-radius: 0 !important; }
+.gr-cle.gr-1 { border-color: var(--gr-1); }
+.gr-cle.gr-2 { border-color: var(--gr-2); }
+.gr-cle.gr-ref { border-top-style: dashed; border-color: var(--encre-3); }
+.legende .gr-cle { width: 16px; height: 0; border-left: 0; border-right: 0; border-bottom: 0; }
+.gr-bulle { position: absolute; top: 4px; background: var(--surface); border: 1px solid var(--bord-fort); border-radius: 8px; padding: 6px 9px; font-size: .78rem; box-shadow: var(--ombre); pointer-events: none; white-space: nowrap; }
+.gr-bulle[hidden] { display: none; }
+.methode .tableau-dim { font-size: .85rem; }
+/* Les symboles (λ, ρ, κ, δ, ξ) ne doivent pas passer en majuscules : ρ deviendrait « P ». */
+.table-couches th, #detail-couches th, #comparaison th, .tableau-dim th, #corps-local th, .table-edition th { text-transform: none; }
+.graphique .gr-texte { font-size: 12px; }
+.methode figure { margin: 10px 0; }
+
+/* ==========================================================
+   L'APPLICATION : en-tête, onglets, mise en page large
+   ========================================================== */
+body.appli { background: var(--fond); }
+.appli .entete { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); }
+.appli .entete-interieur { max-width: 1520px; padding: 10px 20px; gap: 14px; }
+.appli .page { max-width: 1520px; padding: 18px 20px 48px; }
+.logo-texte { display: flex; flex-direction: column; line-height: 1.1; }
+.logo-texte b { font-size: 1.02rem; letter-spacing: -.01em; }
+.logo-texte small { font-size: .72rem; color: var(--encre-3); font-weight: 500; }
+.appli .entete .onglets { margin: 0; }
+.appli .onglets button { padding: 7px 16px; }
+.puce-expert { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--encre-3); border: 1px solid var(--bord); border-radius: 99px; padding: 0 6px; margin-left: 4px; }
+.lien-bao { font-size: .85rem; color: var(--encre-2); text-decoration: none; margin-left: auto; }
+.lien-bao:hover { color: var(--accent); }
+.appli .version { margin-left: 0; }
+.appli .bouton-lexique { margin-left: 0; }
+@media (max-width: 760px) {
+  .appli .entete { position: static; }
+  .appli .entete .onglets { order: 3; width: 100%; }
+  .lien-bao, .appli .version { display: none; }
+  .appli .page { padding: 14px 12px 40px; }
+}
+.bandeau-expert { background: var(--froid-doux); color: var(--encre); border-radius: var(--rayon); padding: 12px 16px; margin-bottom: 16px; font-size: .92rem; }
+
+/* ==========================================================
+   LE STUDIO : saisie | maquette 3D | résultat
+   ========================================================== */
+.studio { display: grid; grid-template-columns: 310px minmax(0, 1fr) 340px; grid-template-areas: "saisie maquette resultat"; gap: 18px; align-items: start; }
+.studio-saisie { grid-area: saisie; }
+.studio-3d { grid-area: maquette; position: sticky; top: 76px; }
+.studio-resultat { grid-area: resultat; display: grid; gap: 14px; }
+.studio-resultat > .carte, .studio-resultat > .alerte { margin: 0; }
+@media (max-width: 1280px) {
+  .studio { grid-template-columns: 310px minmax(0, 1fr); grid-template-areas: "maquette maquette" "saisie resultat"; }
+  .studio-3d { position: static; }
+}
+@media (max-width: 760px) {
+  .studio { grid-template-columns: minmax(0, 1fr); grid-template-areas: "maquette" "saisie" "resultat"; gap: 14px; }
+}
+
+/* ----- Les étapes de saisie (accordéon) ----- */
+.pas { background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); margin-bottom: 10px; box-shadow: var(--ombre); }
+.pas > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; }
+.pas > summary::-webkit-details-marker { display: none; }
+.pas > summary::after { content: "▾"; color: var(--encre-3); margin-left: 6px; transition: transform .15s; }
+.pas:not([open]) > summary::after { transform: rotate(-90deg); }
+.pas-n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: .78rem; font-weight: 750; background: var(--accent-doux); color: var(--accent); }
+.pas-titre { font-weight: 680; }
+.pas-resume { margin-left: auto; font-size: .78rem; color: var(--encre-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48%; }
+.pas-corps { padding: 2px 14px 14px; display: grid; gap: 12px; }
+.etiquette { font-size: .85rem; font-weight: 600; color: var(--encre-2); }
+
+.curseur { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.curseur label { grid-column: 1 / -1; font-size: .85rem; font-weight: 600; color: var(--encre-2); }
+.curseur input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.curseur output { font-variant-numeric: tabular-nums; font-weight: 700; font-size: .88rem; min-width: 64px; text-align: right; }
+
+.segments { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--bord); border-radius: 10px; padding: 3px; }
+.segments button { flex: 1; border: 0; background: transparent; font: inherit; font-size: .86rem; font-weight: 600; color: var(--encre-2); padding: 6px 4px; border-radius: 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.segments button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: var(--ombre); }
+.segments-icones svg { width: 34px; height: 22px; fill: currentColor; opacity: .85; }
+
+/* ----- La boussole (orientation de la façade A) ----- */
+.boussole { position: relative; width: 190px; height: 190px; margin: 4px auto; border-radius: 50%; background: radial-gradient(circle, var(--surface-2) 58%, var(--accent-doux) 59%, var(--accent-doux) 61%, var(--surface-2) 62%); border: 1px solid var(--bord); }
+.boussole button { position: absolute; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--bord-fort); background: var(--surface); font: inherit; font-size: .74rem; font-weight: 700; color: var(--encre-2); cursor: pointer; }
+.boussole button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.boussole-centre { position: absolute; inset: 50% auto auto 50%; width: 0; height: 0; transition: transform .2s; }
+.boussole-fleche { position: absolute; left: -3px; top: -46px; width: 6px; height: 46px; border-radius: 3px; background: var(--accent); }
+.boussole-fleche::before { content: ""; position: absolute; left: -6px; top: -8px; border: 9px solid transparent; border-bottom-color: var(--accent); border-top: 0; }
+.boussole-a { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 8px; background: var(--surface); border: 2px solid var(--accent); display: grid; place-items: center; font-weight: 800; font-size: .8rem; color: var(--accent); }
+
+/* ----- Les fenêtres façade par façade ----- */
+.facades { display: grid; gap: 6px; }
+.facade-ligne { display: grid; grid-template-columns: minmax(0, 1fr) 84px; grid-template-areas: "nom m2" "prot prot"; gap: 6px 8px; padding: 8px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s; }
+.facade-ligne.choisie { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux); }
+.facade-nom { grid-area: nom; align-self: center; font-size: .88rem; }
+.facade-nom b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: #fff; font-size: .78rem; margin-right: 4px; }
+.facade-m2 { grid-area: m2; display: flex; align-items: center; gap: 4px; font-size: .82rem; color: var(--encre-2); }
+.facade-m2 input { width: 100%; text-align: right; padding: 5px 6px; }
+.facade-ligne select { grid-area: prot; font-size: .84rem; padding: 5px 6px; }
+
+/* ----- La maquette 3D ----- */
+.carte-3d { padding: 0; overflow: hidden; position: relative; margin: 0; }
+.m-scene { cursor: grab; touch-action: none; outline: none; }
+.m-scene:active { cursor: grabbing; }
+.m-scene:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); }
+.maison3d { display: block; width: 100%; height: auto; }
+.m-ciel-haut { stop-color: var(--m-ciel-haut); }
+.m-ciel-bas { stop-color: var(--m-ciel-bas); }
+.m-sol { fill: var(--m-sol); }
+.m-anneau { fill: none; stroke: var(--m-anneau); stroke-width: 1.5; stroke-dasharray: 4 5; }
+.m-rose { stroke: var(--encre-3); stroke-width: 1.4; }
+.m-rose.m-nord { stroke: var(--danger); stroke-width: 2.4; }
+.m-cardinal { font: 700 13px var(--police); fill: var(--encre-2); }
+.m-cardinal.m-nord { fill: var(--danger); }
+.m-ombre { fill: #000; opacity: .12; }
+.m-fond-mur { fill: var(--m-mur); }
+.m-fond-toit { fill: var(--m-toit); }
+.m-ombrage { fill: #000; }
+.m-contour { fill: none; stroke: var(--m-trait); stroke-width: 1.1; stroke-linejoin: round; stroke-opacity: .55; }
+.m-tuiles { fill: none; stroke: var(--m-tuiles); stroke-width: 1; stroke-opacity: .5; }
+.m-face { cursor: pointer; }
+.m-face:hover .m-contour { stroke: var(--accent); stroke-opacity: 1; stroke-width: 2; }
+.m-face.m-choisi .m-contour { stroke: var(--accent); stroke-opacity: 1; stroke-width: 3; }
+.m-face.m-choisi .m-fond-mur { fill: color-mix(in srgb, var(--m-mur) 82%, var(--accent)); }
+.m-vitre { fill: var(--m-vitre); }
+.m-reflet { fill: #fff; opacity: .35; }
+.m-cadre { fill: none; stroke: var(--m-cadre); stroke-width: 1.6; stroke-linejoin: round; }
+.m-fenetre { cursor: pointer; }
+.m-coffre { fill: var(--m-coffre); }
+.m-lames { stroke: var(--m-coffre); stroke-width: 1.2; }
+.m-volet { fill: #5d8a74; stroke: var(--m-trait); stroke-width: .6; stroke-opacity: .5; }
+.m-store { fill: var(--m-store); opacity: .9; stroke: var(--m-trait); stroke-width: .6; stroke-opacity: .5; }
+.m-store-int { fill: #fff; opacity: .45; }
+.m-etiquette { cursor: pointer; }
+.m-etiquette rect { fill: var(--surface); stroke: var(--bord-fort); }
+.m-etiquette text { font: 700 11px var(--police); fill: var(--encre); }
+.m-etiquette.m-choisi rect { fill: var(--accent); stroke: var(--accent); }
+.m-etiquette.m-choisi text { fill: #fff; }
+.m-outils { position: absolute; top: 10px; left: 10px; display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--bord); border-radius: 10px; padding: 3px; box-shadow: var(--ombre); }
+.m-bouton { border: 0; background: transparent; font: inherit; font-size: .8rem; font-weight: 650; color: var(--encre-2); padding: 5px 9px; border-radius: 7px; cursor: pointer; }
+.m-bouton:hover { background: var(--surface-2); color: var(--accent); }
+.m-sep { width: 1px; background: var(--bord); margin: 3px 2px; }
+.m-aide { position: absolute; bottom: 8px; right: 12px; font-size: .74rem; color: var(--encre-3); background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 2px 8px; border-radius: 99px; }
+@media (max-width: 760px) { .m-aide { display: none; } }
+
+/* ----- Le résultat ----- */
+.note-carte { text-align: left; }
+.jauge { display: block; width: 210px; max-width: 100%; margin: 0 auto; }
+.jauge-fond { fill: none; stroke: var(--surface-2); stroke-width: 16; stroke-linecap: round; }
+@media (prefers-color-scheme: light) { .jauge-fond { stroke: var(--bord); } }
+.jauge-val { font: 800 34px var(--police); fill: var(--encre-3); }
+.jauge-sur { font-size: 16px; font-weight: 600; }
+.puces-futures { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.puces-futures span { font-size: .74rem; font-weight: 600; color: var(--encre-3); border: 1px dashed var(--bord-fort); border-radius: 99px; padding: 2px 9px; }
+.tuiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tuiles-3d { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 12px; }
+.tuiles-3d .tuile { background: var(--surface); border: 1px solid var(--bord); box-shadow: var(--ombre); }
+@media (max-width: 560px) { .tuiles-3d { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tuile { background: var(--surface-2); border-radius: 10px; padding: 9px 11px; display: flex; flex-direction: column; min-width: 0; }
+.tuile-nom { font-size: .74rem; color: var(--encre-2); }
+.tuile-val { font-size: 1.3rem; font-weight: 760; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.tuile-val small { font-size: .72rem; font-weight: 600; color: var(--encre-2); }
+.tuile-dit { font-size: .72rem; color: var(--encre-3); }
+.chiffre-cle { font-size: 1.9rem; font-weight: 780; letter-spacing: -.01em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.chiffre-cle small { font-size: .9rem; color: var(--encre-2); font-weight: 600; }
+.barres-postes { display: grid; gap: 9px; }
+.barre-poste { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; font-size: .84rem; }
+.bp-val { color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.bp-jauge { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bp-jauge i { display: block; height: 100%; border-radius: 99px; background: var(--gr-1); }
+.echelle-inertie { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+.echelle-inertie span { font-size: .68rem; text-align: center; padding: 6px 2px; border-radius: 6px; background: var(--surface-2); color: var(--encre-3); line-height: 1.1; }
+.echelle-inertie span.actif { background: var(--gr-2); color: #fff; font-weight: 700; }
+.rose { display: block; width: 210px; max-width: 100%; margin: 0 auto; }
+.rose-cercle { fill: var(--surface-2); stroke: var(--bord-fort); stroke-width: 1; }
+.rose-mi { fill: none; stroke-dasharray: 3 4; }
+.rose-cardinal { font: 700 12px var(--police); fill: var(--encre-3); }
+.rose-petale { fill: var(--gr-2); fill-opacity: .85; stroke: var(--surface); stroke-width: 2; cursor: pointer; }
+.rose-petale.choisi { fill: var(--accent); }
+.rose-val { font: 700 11px var(--police); fill: var(--encre); }
+.detail-calcul > summary { cursor: pointer; font-weight: 650; }
+.detail-calcul .formule { margin-top: 10px; font-size: .74rem; }
+@media (max-width: 760px) {
+  .m-outils { position: static; margin: 8px 8px 0; width: fit-content; }
+  .puce-expert { display: none; }
+  .appli .onglets button { padding: 7px 12px; }
+}
+.exemples > summary { cursor: pointer; }
+.exemples ul { margin: 6px 0 0 18px; padding: 0; font-size: .86rem; }

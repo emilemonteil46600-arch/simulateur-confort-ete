@@ -67,7 +67,15 @@
   function sauverParoi() { BAO.ecrire(CLES.paroi, paroi); }
   function sauverLocal() { BAO.ecrire(CLES.local, local); }
   function sauverMateriaux() { BAO.ecrire(CLES.materiaux, materiaux); }
-  function sauverReglages() { BAO.ecrire(CLES.reglages, reglages); }
+  // Les réglages sont partagés avec l'onglet Projet (types de fenêtres) : on relit avant d'écrire
+  // pour ne modifier que l'onde.
+  function sauverReglages() {
+    const r = BAO.lire(CLES.reglages, null) || {};
+    r.onde = reglages.onde;
+    BAO.ecrire(CLES.reglages, r);
+  }
+  // Prévient l'onglet Projet que les matériaux ou les parois enregistrées ont changé.
+  function prevenir() { document.dispatchEvent(new CustomEvent('confort:donnees')); }
 
   function trouverMateriau(id) { return materiaux.liste.find(function (m) { return m.id === id; }) || null; }
   function analyser(p) { return P.analyserParoi(p, materiaux.liste); }
@@ -400,7 +408,7 @@
     $('#nom-projet').addEventListener('input', function (e) { paroi.nom = e.target.value; sauverParoi(); const a = analyser(paroi); renderResultats(a); renderComparaison(a); });
     // Après « Enregistrer » ou « Supprimer » (gérés par BAO, branchés avant) : la comparaison et le local suivent.
     ['#btn-enregistrer', '#btn-supprimer-projet'].forEach(function (id) {
-      $(id).addEventListener('click', function () { renderComparaison(analyser(paroi)); renderLocal(); });
+      $(id).addEventListener('click', function () { renderComparaison(analyser(paroi)); renderLocal(); prevenir(); });
     });
     $('#type-paroi').addEventListener('change', function (e) { paroi.type = e.target.value; apresModifParoi(false); });
     $('#sens-flux').addEventListener('change', function (e) { paroi.sensFlux = e.target.value; apresModifParoi(false); });
@@ -503,6 +511,7 @@
       renderMateriaux();
       renderParoi();
       renderCalcul();
+      prevenir();
     });
     $('#corps-materiaux').addEventListener('click', function (e) {
       const b = e.target.closest('[data-action="supprimer"]');
@@ -514,6 +523,7 @@
       materiaux.liste.splice(i, 1);
       sauverMateriaux();
       renderTout();
+      prevenir();
     });
     $('#btn-nouveau-materiau').addEventListener('click', function () {
       materiaux.liste.push({ id: BAO.identifiant('m'), nom: 'Nouveau matériau', famille: 'maconnerie', lambda: 1, rho: 1000, c: 1000, source: '', dateRef: '', statut: 'exemple' });

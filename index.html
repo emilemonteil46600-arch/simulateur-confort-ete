@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulateur de confort d'été</title>
+  <meta name="description" content="Simulateur de confort d'été, étape 1 : parois couche par couche, U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786) et inertie du local (NF EN ISO 13790).">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="commun/style.css">
+  <style>
+    /* Styles propres à cet outil */
+    :root { --gr-1: #c4501b; --gr-2: #1f6fb8; }
+    @media (prefers-color-scheme: dark) { :root { --gr-1: #e0682f; --gr-2: #3f8ee0; } }
+
+    .etape { display: inline-block; font-size: .78rem; font-weight: 650; color: var(--froid); background: var(--froid-doux); border-radius: 99px; padding: 2px 10px; margin-bottom: 8px; }
+    .indicateurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 4px; }
+    .indicateur { background: var(--surface-2); border: 1px solid var(--bord); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+    .indicateur .nom { font-size: .76rem; color: var(--encre-2); }
+    .indicateur .val { font-size: 1.25rem; font-weight: 720; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .indicateur .val small { font-size: .74rem; font-weight: 600; color: var(--encre-2); }
+    .indicateur .dit { font-size: .74rem; color: var(--encre-3); }
+    .table-couches select { min-width: 190px; }
+    .table-couches input { width: 70px; text-align: right; }
+    .table-couches td.num { white-space: nowrap; }
+    .boutons-ligne { display: flex; gap: 2px; justify-content: flex-end; }
+    .boutons-ligne .bouton { padding: 2px 7px; }
+    .schema-paroi { max-width: 560px; }
+    .schema-svg .sch-interieur { fill: var(--surface-2); }
+    .schema-svg .sch-couche { stroke: var(--encre-3); stroke-width: .6; }
+    .schema-svg .sch-onde { fill: none; stroke: var(--gr-1); stroke-width: 2.2; stroke-linejoin: round; }
+    .grille-graphes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+    @media (max-width: 900px) { .grille-graphes { grid-template-columns: minmax(0, 1fr); } }
+    .graphique-boite { position: relative; }
+    .graphique { display: block; width: 100%; height: auto; touch-action: pan-y; }
+    .graphique .gr-grille { stroke: var(--bord); stroke-width: 1; }
+    .graphique .gr-zero { stroke: var(--encre-3); stroke-width: 1; }
+    .graphique .gr-repere { stroke: var(--encre-3); stroke-width: 1; stroke-dasharray: 2 3; }
+    .graphique .gr-texte { fill: var(--encre-2); font-size: 11px; font-family: var(--police); }
+    .graphique .gr-ligne { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .graphique .gr-ligne.gr-1 { stroke: var(--gr-1); }
+    .graphique .gr-ligne.gr-2 { stroke: var(--gr-2); }
+    .graphique .gr-ligne.gr-ref { stroke: var(--encre-3); stroke-dasharray: 5 4; }
+    .graphique .gr-reticule { stroke: var(--encre-3); stroke-width: 1; }
+    .graphique .gr-point { stroke: var(--surface); stroke-width: 2; }
+    .graphique .gr-point.gr-1 { fill: var(--gr-1); }
+    .graphique .gr-point.gr-2 { fill: var(--gr-2); }
+    .graphique .gr-point.gr-ref { fill: var(--encre-3); }
+    .gr-cle { display: inline-block; width: 16px; height: 0; border-top: 2px solid; margin-right: 6px; vertical-align: middle; border-radius: 0 !important; }
+    .gr-cle.gr-1 { border-color: var(--gr-1); }
+    .gr-cle.gr-2 { border-color: var(--gr-2); }
+    .gr-cle.gr-ref { border-top-style: dashed; border-color: var(--encre-3); }
+    .legende .gr-cle { width: 16px; height: 0; border-left: 0; border-right: 0; border-bottom: 0; }
+    .gr-bulle { position: absolute; top: 4px; background: var(--surface); border: 1px solid var(--bord-fort); border-radius: 8px; padding: 6px 9px; font-size: .78rem; box-shadow: var(--ombre); pointer-events: none; white-space: nowrap; }
+    .gr-bulle[hidden] { display: none; }
+    .methode .tableau-dim { font-size: .85rem; }
+    /* Les symboles (λ, ρ, κ, δ, ξ) ne doivent pas passer en majuscules : ρ deviendrait « P ». */
+    .table-couches th, #detail-couches th, #comparaison th, .tableau-dim th, #corps-local th, .table-edition th { text-transform: none; }
+    .graphique .gr-texte { font-size: 12px; }
+    .methode figure { margin: 10px 0; }
+  </style>
+</head>
+<body>
+
+<header class="entete">
+  <div class="entete-interieur">
+    <a class="logo" href="./" title="Simulateur de confort d'été">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="16" cy="16" r="5" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M16 5v3M16 24v3M5 16h3M24 16h3M8.2 8.2l2.1 2.1M21.7 21.7l2.1 2.1M8.2 23.8l2.1-2.1M21.7 10.3l2.1-2.1" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span>Simulateur de confort d'été</span>
+    </a>
+    <a class="fil" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils d'Émile">Boîte à outils ↗</a>
+    <span class="version">Étape 1 · nov. 2026</span>
+  </div>
+</header>
+
+<main class="page">
+  <h1>Simulateur de confort d'été</h1>
+  <span class="etape">Étape 1 sur 7 : les parois</span>
+  <p class="intro">Pourquoi un mur « retarde » la chaleur, et pourquoi la <b>position de l'isolant</b> change tout l'été alors que U ne bouge pas. Décris une paroi couche par couche : l'outil calcule U, la masse, le <b>déphasage</b>, l'<b>amortissement</b>, l'<b>admittance</b>, la <b>capacité κ</b> (NF EN ISO 13786) et la <b>classe d'inertie</b> du local (NF EN ISO 13790).</p>
+
+  <nav class="onglets" role="tablist" aria-label="Sections de l'outil">
+    <button data-onglet="calcul">Calcul</button>
+    <button data-onglet="methode">Méthode</button>
+    <button data-onglet="donnees">Données</button>
+  </nav>
+
+  <!-- ===================== ONGLET CALCUL ===================== -->
+  <section class="panneau" id="onglet-calcul" role="tabpanel">
+    <div class="grille-2">
+      <div>
+        <div class="carte">
+          <div class="carte-titre"><h2>La paroi</h2><span class="aide">Couches de l'intérieur (1) vers l'extérieur</span></div>
+          <div class="champs">
+            <div class="champ">
+              <label for="nom-projet">Nom de la paroi</label>
+              <input type="text" id="nom-projet" placeholder="ex. Façade ouest existante" autocomplete="off">
+            </div>
+            <div class="champ">
+              <label for="type-paroi">Ce qu'il y a de l'autre côté</label>
+              <select id="type-paroi">
+                <option value="exterieure">L'extérieur (mur, toiture, plancher bas)</option>
+                <option value="interieure">Une autre pièce (cloison, refend, plancher intermédiaire)</option>
+              </select>
+            </div>
+            <div class="champ">
+              <label for="sens-flux">Sens du flux (résistances superficielles)</label>
+              <select id="sens-flux"></select>
+            </div>
+          </div>
+          <div class="barre-boutons" style="margin-top:12px">
+            <select id="modele" aria-label="Paroi d'exemple" style="width:auto; max-width:100%"></select>
+            <button type="button" class="bouton" id="btn-modele">Partir de ce modèle</button>
+          </div>
+          <div class="defilement" style="margin-top:12px">
+            <table class="table-edition table-couches">
+              <thead><tr><th>N°</th><th>Matériau</th><th class="num">e (cm)</th><th class="num">λ</th><th class="num">ρ</th><th class="num">c</th><th></th></tr></thead>
+              <tbody id="corps-couches"></tbody>
+            </table>
+          </div>
+          <p class="aide" style="margin:6px 0 0">λ en W/(m·K), ρ en kg/m³, c en J/(kg·K). Les valeurs viennent de l'onglet Données.</p>
+          <div class="barre-boutons" style="margin-top:10px">
+            <button type="button" class="bouton" id="btn-ajouter-couche">+ Ajouter une couche</button>
+            <button type="button" class="bouton" id="btn-retourner" title="Mettre la dernière couche à l'intérieur, et ainsi de suite">⇄ Retourner la paroi (ITI ↔ ITE)</button>
+          </div>
+        </div>
+
+        <div class="carte">
+          <div class="carte-titre"><h2>La paroi en coupe</h2><span class="aide">Et l'onde de chaleur qui la traverse</span></div>
+          <div id="schema"></div>
+          <div class="legende" id="legende-schema"></div>
+        </div>
+
+        <div class="carte">
+          <div class="carte-titre"><h2>Couche par couche</h2><span class="aide">Toutes les valeurs intermédiaires</span></div>
+          <div class="defilement"><table id="detail-couches"></table></div>
+        </div>
+
+        <div class="carte">
+          <div class="carte-titre"><h2>Le calcul pas à pas</h2><span class="aide">Matrices de transfert, NF EN ISO 13786</span></div>
+          <div id="detail-matrice"></div>
+        </div>
+
+        <div class="carte">
+          <div class="carte-titre"><h2>Une journée chaude</h2><span class="aide">L'onde extérieure, l'air intérieur fixé</span></div>
+          <div class="champs">
+            <div class="champ"><label for="onde-moy">T extérieure moyenne (°C)</label><input type="text" inputmode="decimal" id="onde-moy"></div>
+            <div class="champ"><label for="onde-amp">Amplitude (± °C)</label><input type="text" inputmode="decimal" id="onde-amp"></div>
+            <div class="champ"><label for="onde-max">Heure du maximum</label><input type="text" inputmode="decimal" id="onde-max"></div>
+            <div class="champ"><label for="onde-ti">T intérieure (°C)</label><input type="text" inputmode="decimal" id="onde-ti"></div>
+          </div>
+          <p class="aide" style="margin:8px 0 12px">Exemple : 16 → 32 °C, maximum à 15 h. (H) Onde sinusoïdale pure, sans soleil sur la paroi : l'étape 2 ajoutera la vraie météo et la température « soleil-air ».</p>
+          <div class="grille-graphes">
+            <div><h3 style="margin:0 0 4px">Températures</h3><div id="graphe-temperatures"></div></div>
+            <div><h3 style="margin:0 0 4px">Flux qui entre dans la pièce</h3><div id="graphe-flux"></div></div>
+          </div>
+          <div id="resume-onde" style="margin-top:10px"></div>
+        </div>
+
+        <div class="carte">
+          <div class="carte-titre"><h2>Comparer mes parois</h2><span class="aide">Les parois enregistrées, côte à côte</span></div>
+          <div class="defilement"><table id="comparaison"></table></div>
+        </div>
+
+        <div class="carte">
+          <div class="carte-titre"><h2>Inertie du local</h2><span class="aide">NF EN ISO 13790:2008, § 12.3.1.2</span></div>
+          <div class="champs">
+            <div class="champ"><label for="local-nom">Local</label><input type="text" id="local-nom" autocomplete="off"></div>
+            <div class="champ"><label for="local-af">Surface de plancher Af (m²)</label><input type="text" inputmode="decimal" id="local-af"></div>
+          </div>
+          <div class="defilement" style="margin-top:12px">
+            <table class="table-edition">
+              <thead><tr><th>Élément</th><th>Paroi</th><th>Faces dans le local</th><th class="num">Aire (m²)</th><th class="num">κ (kJ/(m²·K))</th><th class="num">κ × A (kJ/K)</th><th></th></tr></thead>
+              <tbody id="corps-local"></tbody>
+            </table>
+          </div>
+          <div class="barre-boutons" style="margin-top:10px">
+            <button type="button" class="bouton" id="btn-ajouter-element">+ Ajouter un élément</button>
+            <button type="button" class="bouton discret" id="btn-local-exemple">Revenir au local d'exemple</button>
+          </div>
+          <div id="resultat-local" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <aside class="collant">
+        <div class="carte" id="resultats" aria-live="polite"></div>
+
+        <div class="carte pas-impression">
+          <h3>Mes parois</h3>
+          <p class="aide">« Enregistrer » range la paroi en cours sous son nom : tu peux la comparer aux autres et l'utiliser dans l'inertie du local.</p>
+          <div class="champ" style="margin-bottom:10px">
+            <label for="liste-projets">Parois enregistrées</label>
+            <select id="liste-projets"></select>
+          </div>
+          <div class="barre-boutons">
+            <button type="button" class="bouton" id="btn-enregistrer">Enregistrer</button>
+            <button type="button" class="bouton" id="btn-ouvrir">Ouvrir</button>
+            <button type="button" class="bouton" id="btn-nouveau">Nouvelle</button>
+            <button type="button" class="bouton discret danger" id="btn-supprimer-projet">Supprimer</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===================== ONGLET MÉTHODE ===================== -->
+  <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
+    <div class="carte methode">
+      <h2>1. Ce qu'on cherche</h2>
+      <p>L'hiver, on veut savoir <b>combien</b> de chaleur s'en va : c'est U, un calcul en <b>régime permanent</b> (on suppose que les températures ne bougent pas). L'été, la question change : dehors, la température <b>monte et descend chaque jour</b> et le soleil chauffe les façades. Une paroi lourde ne laisse pas passer cette onde tout de suite : elle en <b>stocke</b> une partie, la <b>retarde</b> et l'<b>écrase</b>. Deux murs de même U peuvent donc donner des pièces très différentes l'été.</p>
+      <p>Cette étape calcule, pour une paroi décrite couche par couche :</p>
+      <ul>
+        <li>ce qu'elle laisse passer en régime permanent : <b>U</b> ;</li>
+        <li>ce qu'elle laisse passer de l'onde journalière : <b>|Y12|</b>, l'<b>amortissement f</b> et le <b>déphasage Δt</b> ;</li>
+        <li>ce qu'elle peut stocker et rendre à la pièce : l'<b>admittance Y11</b> et la <b>capacité κ1</b> ;</li>
+        <li>et, en additionnant toutes les parois d'un local, sa <b>capacité Cm</b> et sa <b>classe d'inertie</b>. Cm sera la capacité du modèle horaire de l'étape 3.</li>
+      </ul>
+
+      <h2>2. La conduction : loi de Fourier et gradient</h2>
+      <p>La chaleur va toujours du chaud vers le froid. Dans un solide, elle avance <b>de proche en proche</b> : les atomes qui vibrent plus fort bousculent leurs voisins. C'est la <b>conduction</b>. Fourier (1822) a constaté que le flux est proportionnel à la <b>pente</b> de la température :</p>
+      <div class="formule">q = − λ × dθ/dx</div>
+      <ul>
+        <li><b>q</b> : densité de flux de chaleur, en W/m² (des watts qui traversent chaque m²).</li>
+        <li><b>dθ/dx</b> : le <b>gradient</b> de température, en K/m. C'est la pente de la courbe θ(x) : de combien la température change quand on avance de 1 m dans le mur. Un gradient de 100 K/m, c'est 1 °C tous les centimètres.</li>
+        <li><b>λ</b> : la conductivité du matériau, en W/(m·K). C'est le coefficient de proportionnalité : pour la même pente, le béton (λ ≈ 2,3) laisse passer environ 65 fois plus de chaleur que la laine minérale (λ ≈ 0,035).</li>
+        <li>Le <b>signe moins</b> : si la température baisse quand x augmente (pente négative), la chaleur avance vers les x croissants (q positif). La chaleur « descend » la pente.</li>
+      </ul>
+      <p><b>Pourquoi un gradient ?</b> Parce que la chaleur ne « voit » pas la température elle-même : elle voit la <b>différence</b> entre deux points voisins. Une paroi à 20 °C partout ne fait passer aucun flux, même si l'air dehors est à 35 °C : tant que la différence n'a pas pénétré dans le mur, rien ne bouge. C'est toute l'idée de l'inertie.</p>
+      <p><b>Vérification des unités</b> (équation aux dimensions) :</p>
+      <div class="formule">[q] = [λ] × [dθ/dx] = W/(m·K) × K/m = W/m²   ✓</div>
+
+      <h2>3. Le régime permanent : R et U (NF EN ISO 6946)</h2>
+      <p>Si les températures ne bougent pas, le flux est le même dans toutes les couches (sinon de la chaleur s'accumulerait quelque part et la température changerait). Dans une couche homogène, la pente est donc constante : dθ/dx = −Δθ/e, et la loi de Fourier devient :</p>
+      <div class="formule">q = λ × Δθ / e = Δθ / R      avec  R = e / λ      [m] / [W/(m·K)] = m²·K/W</div>
+      <p>Les couches sont traversées l'une après l'autre par le même flux : leurs résistances <b>s'additionnent</b>, comme des résistances électriques en série (Δθ joue le rôle de la tension, q celui du courant). Entre l'air et la paroi, la chaleur passe par convection et rayonnement : on les résume par les <b>résistances superficielles</b> Rsi (intérieur) et Rse (extérieur).</p>
+      <div class="formule">R total = Rsi + Σ e/λ + Rse          U = 1 / R total   [W/(m²·K)]
+
+Rs conventionnelles (NF EN ISO 6946) :
+  flux horizontal (mur)        Rsi = 0,13   Rse = 0,04
+  flux ascendant (toiture)     Rsi = 0,10   Rse = 0,04
+  flux descendant (plancher)   Rsi = 0,17   Rse = 0,04</div>
+      <p>Retiens : U ne dépend <b>pas de l'ordre</b> des couches. Une addition donne le même résultat dans n'importe quel ordre. ITI et ITE de même épaisseur ont le même U.</p>
+
+      <h2>4. Stocker la chaleur : ρ, c, capacité, diffusivité</h2>
+      <p>Pour chauffer un matériau, il faut lui donner de l'énergie. Chauffer de 1 K un kilogramme demande <b>c</b> joules (capacité thermique massique, en J/(kg·K)). Un m² de couche d'épaisseur e contient ρ × e kilogrammes. D'où :</p>
+      <div class="formule">masse surfacique      m = ρ × e            kg/m³ × m = kg/m²
+capacité surfacique   C = ρ × c × e        kg/m³ × J/(kg·K) × m = J/(m²·K)</div>
+      <p>Mais une capacité n'est utile que si la chaleur a le temps d'y entrer. Deux grandeurs le disent :</p>
+      <ul>
+        <li><b>La diffusivité</b> a = λ / (ρ·c), en m²/s : la « vitesse » à laquelle une variation de température s'étale. Unités : W/(m·K) ÷ J/(m³·K) = (J/s)/(m·K) × (m³·K)/J = m²/s ✓.</li>
+        <li><b>L'effusivité</b> b = √(λ·ρ·c), en W·s<sup>½</sup>/(m²·K) : la capacité d'une surface à <b>absorber</b> une chaleur qui arrive. C'est pour ça qu'un carrelage (b ≈ 1 600) paraît plus froid sous le pied qu'un parquet (b ≈ 300) à la même température.</li>
+      </ul>
+      <p>Piège classique : un isolant léger a une diffusivité <b>comparable</b> à celle du béton (≈ 10<sup>−6</sup> m²/s). L'onde de température s'y propage aussi vite, mais elle transporte très peu de chaleur, car l'isolant ne stocke presque rien (ρ·c très petit) et conduit peu.</p>
+
+      <h2>5. L'équation de la chaleur</h2>
+      <p>Prends une tranche de mur très fine, d'épaisseur dx, de surface 1 m². Pendant un instant dt :</p>
+      <ul>
+        <li>il entre un flux q(x) par la gauche et il sort q(x + dx) par la droite ;</li>
+        <li>la différence reste dans la tranche et la réchauffe : ρ·c·dx × dθ/dt.</li>
+      </ul>
+      <div class="formule">ρ·c·dx × ∂θ/∂t = q(x) − q(x+dx) = − ∂q/∂x × dx
+avec q = −λ ∂θ/∂x (Fourier) :
+
+     ∂θ/∂t = a × ∂²θ/∂x²        (a = λ/(ρ·c), la diffusivité)</div>
+      <p>Lecture physique : la température d'un point monte quand la <b>courbure</b> ∂²θ/∂x² est positive, c'est-à-dire quand ses voisins sont en moyenne plus chauds que lui. Unités : K/s = m²/s × K/m² ✓. C'est cette équation que résolvent Pléiades et tous les logiciels de STD.</p>
+
+      <h2>6. Une onde de chaleur dans un mur</h2>
+      <p>L'été, la température extérieure ressemble à une <b>sinusoïde de période T = 24 h</b> (86 400 s). Pour une onde sinusoïdale, l'équation de la chaleur a une solution exacte. Dans un mur très épais :</p>
+      <div class="formule">θ(x, t) = A × e^(−x/δ) × cos(ω·t − x/δ)        ω = 2π/T
+
+δ = √(a·T/π) = √(λ·T / (π·ρ·c))   profondeur de pénétration [m]</div>
+      <ul>
+        <li><b>e^(−x/δ)</b> : l'amplitude est divisée par e ≈ 2,72 à chaque δ traversé. C'est l'<b>amortissement</b>.</li>
+        <li><b>− x/δ</b> dans le cosinus : l'onde prend 1 radian de retard par δ, soit T/(2π) = <b>3,82 h par δ</b>. C'est le <b>déphasage</b>.</li>
+        <li>Béton (λ 2,3 ; ρ 2 300 ; c 1 000) : δ ≈ <b>16,6 cm</b>. Au-delà de 2 ou 3 δ, l'onde du jour n'arrive presque plus : le béton du fond ne « voit » pas la journée.</li>
+        <li>Unités de δ : √(W/(m·K) × s ÷ (kg/m³ × J/(kg·K))) = √(J·m³/(m·K·J/K)) = √(m²) = m ✓.</li>
+      </ul>
+      <p>Cette règle « mur épais » donne les ordres de grandeur, mais elle oublie les résistances superficielles et les couches. Le calcul exact de l'outil utilise les matrices de transfert.</p>
+
+      <h2>7. Plusieurs couches : les matrices de transfert (NF EN ISO 13786)</h2>
+      <p>Une onde se décrit par deux informations : sa <b>taille</b> (amplitude) et son <b>retard</b> (phase). Un nombre complexe z porte les deux à la fois : |z| est l'amplitude et arg(z) la phase. Sur chaque face d'une couche, on a deux ondes : la température θ et le flux q. La solution exacte de l'équation de la chaleur relie les deux faces par une <b>matrice 2 × 2</b> :</p>
+      <div class="formule">[ θ face ext ]   [ Z11  Z12 ]   [ θ face int ]
+[ q face ext ] = [ Z21  Z22 ] × [ q face int ]
+
+Couche homogène (ξ = e/δ) :
+  Z11 = Z22 = cosh ξ·cos ξ + i·sinh ξ·sin ξ
+  Z12 = −δ/(2λ) × [sinh ξ·cos ξ + cosh ξ·sin ξ + i·(cosh ξ·sin ξ − sinh ξ·cos ξ)]   (m²·K/W)
+  Z21 = −λ/δ    × [sinh ξ·cos ξ − cosh ξ·sin ξ + i·(sinh ξ·cos ξ + cosh ξ·sin ξ)]   (W/(m²·K))
+
+Résistance sans masse (Rsi, Rse) :   [ 1  −R ]
+                                      [ 0   1 ]</div>
+      <p>Les couches se suivent : on <b>multiplie</b> leurs matrices, de l'intérieur vers l'extérieur, en mettant chaque nouvelle matrice à gauche :</p>
+      <div class="formule">Z paroi = Z(Rse) × Z(couche n) × … × Z(couche 1) × Z(Rsi)</div>
+      <p>Contrôles faits par les tests : le <b>déterminant</b> de chaque matrice vaut 1 (Z11·Z22 − Z12·Z21 = 1). Pour une couche très fine, Z tend vers [1 −e/λ ; 0 1], c'est-à-dire une simple résistance : on retrouve le régime permanent.</p>
+
+      <h2>8. Ce qu'on tire de la matrice</h2>
+      <div class="defilement">
+        <table class="tableau-dim">
+          <thead><tr><th>Grandeur</th><th>Formule</th><th>Unité</th><th>Ce qu'elle dit</th></tr></thead>
+          <tbody>
+            <tr><td>Transmittance périodique</td><td>Y12 = −1/Z12</td><td>W/(m²·K)</td><td>Flux qui entre dans la pièce pour ± 1 K dehors (air intérieur fixe). Comparable à U, mais pour l'onde.</td></tr>
+            <tr><td>Facteur d'amortissement</td><td>f = |Y12| / U</td><td>–</td><td>Part de l'onde « sans inertie » qui arrive vraiment. f = 1 : aucune inertie ; f = 0,1 : 90 % écrasés.</td></tr>
+            <tr><td>Déphasage</td><td>Δt = −arg(Y12) × T/(2π)</td><td>h</td><td>Retard du pic de flux sur le pic de température extérieure.</td></tr>
+            <tr><td>Admittance intérieure</td><td>Y11 = −Z11/Z12</td><td>W/(m²·K)</td><td>Flux que la paroi absorbe pour ± 1 K d'air intérieur. C'est elle qui « éponge » les apports de la pièce.</td></tr>
+            <tr><td>Capacité intérieure</td><td>κ1 = T/(2π) × |(Z11 − 1)/Z12|</td><td>J/(m²·K)</td><td>Chaleur stockée puis rendue en une journée, vue de la pièce. C'est la masse <b>utile</b>, pas la masse totale.</td></tr>
+            <tr><td>Capacité extérieure</td><td>κ2 = T/(2π) × |(Z22 − 1)/Z12|</td><td>J/(m²·K)</td><td>La même chose, vue de dehors.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>Pourquoi κ1 = T/(2π) × |(Z11 − 1)/Z12| ?</b> On fait osciller l'air intérieur de 1 K, l'extérieur reste fixe. Il entre q1 = −Z11/Z12 par la face intérieure et il sort q2 = −1/Z12 par la face extérieure (car le déterminant vaut 1). La différence (1 − Z11)/Z12 reste dans la paroi : c'est un flux stocké (en W/m²). Diviser par ω = 2π/T transforme une amplitude de flux en amplitude d'énergie (en J/m²). Unités : W/(m²·K) × s = J/(m²·K) ✓.</p>
+      <p><b>Le plafond de Rsi.</b> Toute la chaleur que la pièce donne au mur passe d'abord par Rsi. |Y11| ne peut donc pas dépasser 1/Rsi ≈ 7,7 W/(m²·K), ni κ1 dépasser T/(2π)/Rsi ≈ <b>106 kJ/(m²·K)</b>. Au-delà d'environ 10 cm de béton côté pièce, ajouter de la masse ne sert presque plus. C'est pour ça que la « règle des 10 cm » (ρ·c·e des 10 premiers centimètres, avant le premier isolant) surestime κ1 quand la paroi est lourde : elle oublie Rsi. L'outil affiche les deux pour que tu voies l'écart.</p>
+
+      <h2>9. Exemple refait à la main : béton 20 cm seul</h2>
+      <p>Béton armé λ = 2,3 W/(m·K), ρ = 2 300 kg/m³, c = 1 000 J/(kg·K), e = 0,20 m, mur (Rsi 0,13, Rse 0,04).</p>
+      <div class="formule">Régime permanent :
+  R = 0,13 + 0,20/2,3 + 0,04 = 0,13 + 0,0870 + 0,04 = 0,2570 m²·K/W  →  U = 3,892 W/(m²·K)
+
+Profondeur de pénétration :
+  δ = √(2,3 × 86 400 / (π × 2 300 × 1 000)) = √0,02750 = 0,1658 m
+  ξ = e/δ = 0,20 / 0,1658 = 1,206
+  cosh ξ = 1,8197   sinh ξ = 1,5204   cos ξ = 0,3568   sin ξ = 0,9342
+
+Matrice de la couche :
+  Z11 = Z22 = 1,8197 × 0,3568 + i × 1,5204 × 0,9342 = 0,6492 + 1,4203 i
+  Z12 = −(0,1658 / 4,6) × [0,5424 + 1,7000 + i (1,7000 − 0,5424)]
+      = −0,03605 × (2,2424 + 1,1576 i) = −0,0808 − 0,0417 i
+  Z21 = −(2,3 / 0,1658) × [0,5424 − 1,7000 + i (0,5424 + 1,7000)]
+      = −13,869 × (−1,1576 + 2,2424 i) = 16,055 − 31,100 i
+
+Avec Rsi et Rse (Z = Z(Rse) × Z couche × Z(Rsi)) :
+  Z12 paroi = (Z12 − Rsi·Z11) − Rse·(Z22 − Rsi·Z21)
+            = (−0,1652 − 0,2264 i) − 0,04 × (−1,4379 + 5,4633 i)
+            = −0,1077 − 0,4449 i
+  Z11 paroi = Z11 − Rse·Z21 = 0,0070 + 2,6643 i
+
+Ce qu'on en tire :
+  Y12 = −1/Z12 = 0,514 − 2,123 i    |Y12| = 2,185 W/(m²·K)
+  arg Y12 = −1,333 rad  →  Δt = 1,333 × 3,82 = 5,09 h
+  f = 2,185 / 3,892 = 0,56
+  κ1 = 13 751 × |(−0,9930 + 2,6643 i) / (−0,1077 − 0,4449 i)| = 13 751 × 2,843 / 0,4578
+     = 85 400 J/(m²·K) ≈ 85 kJ/(m²·K)
+
+Règle « mur épais » pour comparer : retard ≈ 1,206 × 3,82 = 4,6 h ; amortissement ≈ e^(−1,206) = 0,30.</div>
+      <p>La règle approchée donne le bon ordre de grandeur (4,6 h contre 5,1 h), mais l'amortissement réel (0,56) est bien moins bon que e^(−ξ) (0,30) : avec 20 cm seulement, l'onde se « réfléchit » sur la face intérieure. D'où l'intérêt du calcul exact.</p>
+
+      <h2>10. La position de l'isolant : même U, autre été</h2>
+      <p>Béton 20 cm + laine minérale 12 cm (λ 0,035), même U ≈ 0,27 W/(m²·K) dans les deux cas :</p>
+      <div class="defilement">
+        <table class="tableau-dim">
+          <thead><tr><th></th><th class="num">U</th><th class="num">Δt</th><th class="num">f</th><th class="num">κ1 (côté pièce)</th></tr></thead>
+          <tbody>
+            <tr><td>ITE (béton côté pièce)</td><td class="num">0,271</td><td class="num">7,3 h</td><td class="num">0,19</td><td class="num"><b>85 kJ/(m²·K)</b></td></tr>
+            <tr><td>ITI (BA13 + isolant côté pièce)</td><td class="num">0,268</td><td class="num">6,9 h</td><td class="num">0,38</td><td class="num"><b>14 kJ/(m²·K)</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Ce qui traverse le mur change peu, car U est tout petit dans les deux cas. Ce qui change énormément, c'est <b>κ1 : la masse que la pièce peut utiliser</b> pour absorber le soleil des vitrages, les occupants et les ordinateurs. En ITI, l'isolant « débranche » le béton de la pièce. C'est l'effet principal de l'ITE sur le confort d'été. Fais le test avec le bouton « Retourner la paroi ».</p>
+
+      <h2>11. L'inertie du local (NF EN ISO 13790)</h2>
+      <p>Le modèle horaire de l'étape 3 représente toute la masse du local par <b>une seule capacité Cm</b>, reliée à l'air par une surface d'échange <b>Am</b>. On les obtient en additionnant toutes les faces que voit l'air du local :</p>
+      <div class="formule">Cm = Σ κj × Aj                 [J/(m²·K)] × [m²] = J/K
+Am = Cm² / Σ (κj² × Aj)        [m²]</div>
+      <ul>
+        <li><b>Paroi sur l'extérieur</b> : κ = κ1 (une face dans le local).</li>
+        <li><b>Paroi vers un local voisin semblable</b> (plancher entre deux étages, cloison) : les deux côtés oscillent pareil. On résout θ1 = θ2 et on prend le flux qui entre par la face du local (H). Pour une paroi symétrique, cela revient à la couper en deux par un plan adiabatique en son milieu.</li>
+        <li><b>Paroi entièrement dans le local</b> (cloison intérieure) : les deux faces comptent.</li>
+        <li>Am est une moyenne pondérée : si toute la masse est dans peu de surfaces très lourdes, Am est petit (l'échange se fait par peu de m²).</li>
+      </ul>
+      <p>Classes de NF EN ISO 13790:2008, tableau 12 (H : à vérifier sur le texte), ramenées au m² de plancher :</p>
+      <div class="defilement"><table class="tableau-dim" id="table-classes-methode"></table></div>
+      <p>(H) La norme donne une valeur par classe, pas des seuils. L'outil nomme la classe dont Cm/Af est le plus proche : c'est <b>notre</b> règle, à garder en tête. Les règles Th-I françaises utilisent les mêmes mots (très légère → très lourde) avec leur propre méthode, non reprise ici.</p>
+
+      <h2>12. Comment on sait que c'est juste</h2>
+      <ul>
+        <li><b>Différences finies</b> (tests Node) : on découpe la paroi en tranches de 4 mm et on simule 12 jours, minute par minute, avec une onde extérieure de ± 1 K. On mesure le flux qui arrive dans la pièce. |Y12|, Δt et |Y11| calculés par les matrices et par la simulation concordent à <b>mieux que 0,1 %</b>. Deux méthodes indépendantes, même résultat.</li>
+        <li><b>Limites physiques</b> : couche très fine → f = 1 et Δt = 0 (régime permanent) ; déterminant = 1 ; U identique quand on retourne la paroi ; κ1 toujours sous le plafond de Rsi.</li>
+        <li><b>Exemple de la section 9</b> recalculé par les tests au millième près.</li>
+        <li>(H) Les exemples chiffrés du texte de NF EN ISO 13786 n'ont pas encore été comparés : il faut le texte de la norme.</li>
+      </ul>
+
+      <h2>13. Limites connues (H)</h2>
+      <ul>
+        <li><b>(H)</b> Onde sinusoïdale pure de 24 h : la vraie météo contient d'autres fréquences (plusieurs jours chauds de suite). Les étapes 3 et 8 calculent heure par heure.</li>
+        <li><b>(H)</b> Pas encore de soleil sur la face extérieure : la couleur (α) et la température soleil-air arrivent à l'étape 2.</li>
+        <li><b>(H)</b> Matériaux creux (parpaing, brique creuse, monomur) traités comme une couche homogène équivalente : le déphasage est approché.</li>
+        <li><b>(H)</b> Conduction 1D : pas de ponts thermiques ni d'effets de bord. Lames d'air ventilées non traitées (on arrête la paroi à la lame).</li>
+        <li><b>(H)</b> Résistances superficielles conventionnelles, constantes. En réalité, elles dépendent du vent et des températures de surface.</li>
+        <li><b>(H)</b> Toutes les valeurs de matériaux sont des <b>exemples</b> à vérifier (NF EN ISO 10456, règles Th-U, ACERMI, fabricant).</li>
+        <li><b>(H)</b> Plancher sur terre-plein : le sol n'est pas modélisé (NF EN ISO 13370, prévu plus tard).</li>
+      </ul>
+
+      <h2>14. Teste-toi</h2>
+      <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
+      <div id="teste-toi"></div>
+
+      <h2>15. Où est le code</h2>
+      <ul>
+        <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
+        <li><code>calcul/calcul.js</code> : le sommaire des chapitres.</li>
+        <li><code>affichage/schemas.js</code> et <code>affichage/graphiques.js</code> : les dessins (aucun calcul).</li>
+        <li><code>affichage/interface.js</code> : l'affichage et les boutons (aucun calcul).</li>
+        <li><code>donnees/confort-materiaux.js</code> : les matériaux, parois et local d'exemple (publics).</li>
+        <li><code>tests/confort-parois.test.js</code> : la validation (différences finies, exemple à la main, limites).</li>
+        <li>Fiche de compréhension : <code>docs/etape-1.md</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== ONGLET DONNÉES ===================== -->
+  <section class="panneau" id="onglet-donnees" role="tabpanel" hidden>
+    <div class="carte" id="mes-donnees"></div>
+
+    <div class="carte">
+      <div class="carte-titre"><h2>Bibliothèque de matériaux</h2><span id="stats-materiaux" class="aide"></span></div>
+      <p class="aide" style="margin:-4px 0 12px">Toutes les valeurs livrées sont des <b>exemples</b>. Remplace-les par tes sources (NF EN ISO 10456, règles Th-U, certificat ACERMI, avis technique) et passe-les en « validé ».</p>
+      <div class="defilement">
+        <table class="table-edition">
+          <thead><tr><th>Matériau</th><th>Famille</th><th class="num">λ W/(m·K)</th><th class="num">ρ kg/m³</th><th class="num">c J/(kg·K)</th><th>Source</th><th>Mois</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="corps-materiaux"></tbody>
+        </table>
+      </div>
+      <div class="barre-boutons" style="margin-top:12px">
+        <button type="button" class="bouton" id="btn-nouveau-materiau">+ Ajouter un matériau</button>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Valeurs de norme utilisées</h2>
+      <h3>Résistances superficielles (NF EN ISO 6946)</h3>
+      <div class="defilement"><table id="table-rs"></table></div>
+      <h3 style="margin-top:14px">Classes d'inertie (NF EN ISO 13790:2008, tableau 12) <span class="badge exemple">(H) à vérifier</span></h3>
+      <div class="defilement"><table id="table-classes"></table></div>
+    </div>
+  </section>
+</main>
+
+<footer class="pied">
+  Outil personnel d'aide à l'audit énergétique. Ordres de grandeur pour comprendre et comparer des variantes ; la STD reste la référence.
+</footer>
+
+<script src="commun/commun.js"></script>
+<script src="donnees/confort-materiaux.js"></script>
+<script src="calcul/calcul-parois.js"></script>
+<script src="calcul/calcul.js"></script>
+<script src="affichage/schemas.js"></script>
+<script src="affichage/graphiques.js"></script>
+<script src="affichage/exercices.js"></script>
+<script src="donnees/lexique.js"></script>
+<script src="affichage/interface.js"></script>
+</body>
+</html>

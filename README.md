@@ -11,6 +11,7 @@ sourcée et vérifiée. Il complète une STD (Pléiades) pour tester vite des va
 |---|---|---|
 | 1 | Parois couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), inertie du local (NF EN ISO 13790), validées par différences finies | ✅ |
 | 1 bis | La maison en 3D (faite main, sans bibliothèque) : volume, toiture, orientation, fenêtres par façade ; déperditions H = Σ U·A et inertie de toute la maison | ✅ |
+| 1 ter | Le labo animé : un mur en coupe où l'on voit la température avancer et le flux entrer dans la pièce, minute par minute (différences finies) ; glisser l'isolant de l'intérieur à l'extérieur | ✅ |
 | 2 | Météo embarquée, soleil sur chaque façade, apports solaires et internes | à venir |
 | 3 | Modèle horaire 5R1C : températures d'air, radiante, opérative | à venir |
 | 4 | Indicateurs : heures > 26/28 °C, degrés-heures, confort adaptatif, PMV/PPD, Givoni, score sur 100 | à venir |

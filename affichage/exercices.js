@@ -9,6 +9,7 @@
 
   const P = global.ConfortParois || (typeof require === 'function' ? require('../calcul/calcul-parois.js') : null);
   const B = global.ConfortBatiment || (typeof require === 'function' ? require('../calcul/calcul-batiment.js') : null);
+  const Tr = global.ConfortTransitoire || (typeof require === 'function' ? require('../calcul/calcul-transitoire.js') : null);
   const BAO = global.BAO;
   const nb = BAO.nombre;
   const choisir = function (h, liste) { return liste[Math.floor(h() * liste.length)]; };
@@ -130,6 +131,21 @@
           enonce: 'Murs <b>' + nb(Am) + ' m²</b> (U = ' + nb(Um, 2) + '), fenêtres <b>' + nb(Af) + ' m²</b> (Uw = ' + nb(Uw, 1) + '), toiture <b>' + nb(At) + ' m²</b> (U = ' + nb(Ut, 2) + '). Quel est H, sans le plancher bas ?',
           correction: 'H = Σ U × A = ' + nb(Um, 2) + ' × ' + nb(Am) + ' + ' + nb(Uw, 1) + ' × ' + nb(Af) + ' + ' + nb(Ut, 2) + ' × ' + nb(At) + '\n  = ' +
             nb(Um * Am, 1) + ' + ' + nb(Uw * Af, 1) + ' + ' + nb(Ut * At, 1) + ' = ' + nb(reponse, 1) + ' W/K'
+        };
+      }
+    },
+    {
+      titre: 'Le temps de traversée (t ≈ e²/a)',
+      generer: function (h) {
+        const m = choisir(h, MURS.concat(ISOLANTS));
+        const e = BAO.tirer(h, 8, 30, 2) / 100;
+        const a = P.diffusivite(m);
+        const reponse = Tr.tempsDiffusion(e, a) / 3600;
+        return {
+          type: 'nombre', unite: 'h', tolerance: Math.max(0.2, reponse * 0.03), reponse: reponse,
+          enonce: '<b>' + nb(e * 100) + ' cm de ' + m.nom + '</b> (λ = ' + nb(m.lambda, 3) + ', ρ = ' + nb(m.rho) + ', c = ' + nb(m.c) + '). Ordre de grandeur du temps que met une variation de température à traverser cette épaisseur (t ≈ e²/a), en heures ?',
+          correction: 'a = λ / (ρ·c) = ' + nb(m.lambda, 3) + ' / (' + nb(m.rho) + ' × ' + nb(m.c) + ') = ' + nb(a * 1e6, 3) + '·10⁻⁶ m²/s\n' +
+            't ≈ e² / a = ' + nb(e, 2) + '² / ' + nb(a * 1e6, 3) + '·10⁻⁶ = ' + nb(reponse * 3600) + ' s = ' + nb(reponse, 1) + ' h'
         };
       }
     },

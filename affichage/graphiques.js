@@ -124,6 +124,7 @@
     const rendu = courbes(o);
     element.innerHTML = rendu.html;
     attacherSurvol(element.querySelector('.graphique-boite'), o, rendu);
+    return rendu;
   }
 
   const ConfortGraphiques = { courbes: courbes, dessiner: dessiner, graduations: graduations };

@@ -31,7 +31,7 @@ test('Syntaxe JavaScript (node --check) de chaque fichier du site', function () 
 test('Chaque page ne charge que des scripts et feuilles de style qui existent', function () {
   fichiers(RACINE, '.html').forEach(function (page) {
     const html = fs.readFileSync(page, 'utf8');
-    const liens = Array.from(html.matchAll(/(?:src|href)="([^"#:]+\.(?:js|css))"/g)).map(function (m) { return m[1]; });
+    const liens = Array.from(html.matchAll(/(?:src|href)="([^"#:?]+\.(?:js|css))(?:\?[^"]*)?"/g)).map(function (m) { return m[1]; });
     liens.forEach(function (lien) {
       const cible = path.join(path.dirname(page), lien);
       assert.ok(fs.existsSync(cible), path.relative(RACINE, page) + ' → ' + lien + ' introuvable');
@@ -44,4 +44,13 @@ test('Le simulateur a ses trois onglets Calcul · Méthode · Données', functio
   ['calcul', 'methode', 'donnees'].forEach(function (o) {
     assert.ok(html.includes('data-onglet="' + o + '"') && html.includes('id="onglet-' + o + '"'), 'onglet « ' + o + ' » manquant');
   });
+});
+
+test('Chaque script et feuille de style du site porte le même numéro de version (?v=…), pour vider le cache', function () {
+  const html = fs.readFileSync(path.join(RACINE, 'index.html'), 'utf8');
+  const locaux = Array.from(html.matchAll(/(?:src|href)="(?!https?:|data:)([^"#]+\.(?:js|css)[^"]*)"/g)).map(function (m) { return m[1]; });
+  assert.ok(locaux.length >= 10);
+  const versions = new Set(locaux.map(function (l) { const v = /\?v=([\w.-]+)$/.exec(l); return v ? v[1] : 'aucune'; }));
+  assert.equal(versions.size, 1, 'versions différentes : ' + Array.from(versions).join(', '));
+  assert.ok(!versions.has('aucune'), 'un fichier sans ?v=');
 });

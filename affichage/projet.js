@@ -7,8 +7,8 @@
 (function () {
   'use strict';
 
-  const B = window.ConfortCalcul.batiment;
-  const P = window.ConfortCalcul.parois;
+  const B = window.ConfortBatiment;
+  const P = window.ConfortParois;
   const X = window.CONFORT_PROJET;
   const M = window.CONFORT_MATERIAUX;
   const esc = BAO.echapper;
@@ -300,7 +300,7 @@
   /* ==========================================================
      ÉVÉNEMENTS
      ========================================================== */
-  const maquette = window.ConfortMaison3D.creer($('#maison3d'), { surSelection: choisir });
+  let maquette = null;
 
   function choisir(cible) {
     selection = cible;
@@ -420,7 +420,18 @@
     document.addEventListener('confort:donnees', function () { toutRedessiner(true); });
   }
 
-  brancher();
-  renderVitrages();
-  toutRedessiner(true);
+  // Démarrage protégé : si un fichier manque ou si le navigateur a gardé une ancienne version en mémoire,
+  // on l'écrit clairement au lieu d'afficher une page vide.
+  try {
+    if (!B || !P || !window.ConfortMaison3D) throw new Error('fichier de calcul ou de dessin manquant');
+    maquette = window.ConfortMaison3D.creer($('#maison3d'), { surSelection: choisir });
+    brancher();
+    renderVitrages();
+    toutRedessiner(true);
+  } catch (e) {
+    const msg = '<div class="alerte attention" style="margin:0"><b>La page n\'a pas pu démarrer.</b> Ton navigateur utilise sans doute ' +
+      'une ancienne version gardée en mémoire : recharge avec <b>Ctrl + F5</b> (ou Cmd + Maj + R sur Mac).<br><small>Détail : ' + esc(e.message) + '</small></div>';
+    $('#resultat-projet').innerHTML = msg;
+    if (window.console) console.error(e);
+  }
 })();

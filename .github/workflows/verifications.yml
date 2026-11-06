@@ -1,0 +1,20 @@
+# Vérifications automatiques à chaque PR et à chaque mise à jour de main :
+# syntaxe des fichiers JavaScript, exemples des onglets Méthode, données publiques.
+# Le site lui-même n'a besoin d'aucune installation : seuls ces tests utilisent Node.
+name: Vérifications
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  tests:
+    name: Tests (syntaxe, calculs, données)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test

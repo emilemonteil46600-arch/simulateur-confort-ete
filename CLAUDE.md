@@ -106,7 +106,10 @@ préconisations, validation, découpage en 8 étapes).
    - maquette 3D : caméra orthonormée et directe (r × h = c), Est à droite vu depuis le Sud (pas de miroir) ;
    - Teste-toi : 40 tirages par exercice.
 2. `node tests/navigateur.js` : aucune erreur console, 390 px clair / sombre, exemples à l'écran, sauvegarde / restauration.
-3. Si un exemple de Méthode change : mettre à jour **en même temps** la Méthode, le test, la fiche et ce fichier.
+3. **Changer le numéro de version `?v=AAAAMMJJ`** de TOUS les scripts et feuilles de style dans `index.html` à chaque
+   mise en ligne (un test vérifie qu'ils ont tous le même). Sinon le navigateur garde d'anciens fichiers en mémoire
+   et la page reste vide (bug du 07/11/2026).
+4. Si un exemple de Méthode change : mettre à jour **en même temps** la Méthode, le test, la fiche et ce fichier.
 
 ## Comment travailler avec Émile
 

@@ -219,6 +219,10 @@
         '<rect x="' + (x0 + 2).toFixed(1) + '" y="' + (HAUT - 32) + '" width="' + (x1 - x0 - 4).toFixed(1) + '" height="24" rx="12"/>' +
         '<text x="' + milieu.toFixed(1) + '" y="' + (HAUT - 16) + '" text-anchor="middle">' + esc(nomCourt(c.materiau.nom, x1 - x0 - 8)) + '</text></g>' +
         '<text x="' + milieu.toFixed(1) + '" y="' + (BAS + 22) + '" text-anchor="middle" class="labo-ep">' + nb(c.e * 100, c.e < 0.02 ? 1 : 0) + ' cm</text>';
+      // La poubelle, en bas de chaque couche (pas s'il n'en reste qu'une : un mur sans couche n'existe pas).
+      if (couches.length > 1) s += poubelle(milieu, BAS - 20, k);
+      // Couche tirée hors du mur : on montre qu'elle va partir.
+      if (glisse && glisse.jeter && glisse.index === k) s += '<rect x="' + (x0 + 1.5).toFixed(1) + '" y="' + (HAUT + 1.5) + '" width="' + (x1 - x0 - 3).toFixed(1) + '" height="' + (BAS - HAUT - 3) + '" class="labo-jeter-cadre"/>';
     });
 
     // Dehors : soleil (ou lune la nuit) et température.
@@ -238,6 +242,21 @@
       s += '<line x1="' + bords[cible] + '" x2="' + bords[cible] + '" y1="' + (HAUT - 36) + '" y2="' + (BAS + 6) + '" class="labo-insertion"/>';
     }
     return s + '</svg>';
+  }
+
+  // Petite icône poubelle (cercle + seau + couvercle), cliquable : data-supprimer = n° de la couche.
+  function poubelle(x, y, k) {
+    return '<g class="labo-poubelle" data-supprimer="' + k + '" transform="translate(' + x.toFixed(1) + ' ' + y + ')">' +
+      '<title>Retirer cette couche</title><circle r="12"/>' +
+      '<path d="M-5.5 -4.5h11M-2 -4.5v-2h4v2M-4.2 -4.5l.8 9.5h6.8l.8-9.5M-1.2 -1.5v4.5M1.2 -1.5v4.5"/></g>';
+  }
+  function retirer(k) {
+    if (A.paroi().couches.length <= 1) { BAO.notifier('Il faut au moins une couche dans le mur.'); return; }
+    const nom = (A.paroi().couches[k] || {}).materiau;
+    A.modifier(function (p) { p.couches.splice(k, 1); });
+    selection = null;
+    const m = A.materiaux().find(function (x) { return x.id === nom; });
+    BAO.notifier((m ? m.nom.replace(/ \(.*\)$/, '') : 'Couche') + ' retirée du mur.');
   }
 
   function nomCourt(nom, largeur) {
@@ -367,7 +386,7 @@
       '<label class="labo-ep-curseur"><input type="range" min="0.5" max="50" step="0.5" value="' + (c.e * 100) + '" data-labo="e" aria-label="Épaisseur"><output>' + nb(c.e * 100, 1) + ' cm</output></label>' +
       '<button type="button" class="labo-rond" data-labo="interieur" title="Vers l\'intérieur" aria-label="Vers l\'intérieur">←</button>' +
       '<button type="button" class="labo-rond" data-labo="exterieur" title="Vers l\'extérieur" aria-label="Vers l\'extérieur">→</button>' +
-      '<button type="button" class="labo-rond danger" data-labo="retirer" title="Retirer" aria-label="Retirer la couche">✕</button></div>';
+      '<button type="button" class="labo-retirer" data-labo="retirer" title="Retirer cette couche du mur">' + ICONE_POUBELLE + ' Retirer</button></div>';
   }
 
   function dessinerReglages() {
@@ -458,21 +477,28 @@
     selection = index;
   }
 
+  const ICONE_POUBELLE = '<svg viewBox="-8 -8 16 16" width="16" height="16" aria-hidden="true"><path d="M-5.5 -4.5h11M-2 -4.5v-2h4v2M-4.2 -4.5l.8 9.5h6.8l.8-9.5M-1.2 -1.5v4.5M1.2 -1.5v4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function brancher() {
     const scene = $('#labo-scene');
-    // Déplacer une couche existante (on attrape son nom).
+    // Déplacer une couche existante (on attrape son nom), ou la retirer (poubelle).
     scene.addEventListener('pointerdown', function (e) {
+      const bin = e.target.closest('[data-supprimer]');
+      if (bin && sim) { e.preventDefault(); retirer(Number(bin.dataset.supprimer)); return; }
       const poignee = e.target.closest('[data-couche]');
       if (!poignee || !sim) return;
-      glisse = { index: Number(poignee.dataset.couche), x: e.clientX, bouge: false, cible: null };
+      glisse = { index: Number(poignee.dataset.couche), x: e.clientX, y: e.clientY, bouge: false, cible: null, jeter: false };
       scene.setPointerCapture(e.pointerId);
       e.preventDefault();
     });
     scene.addEventListener('pointermove', function (e) {
       if (!glisse) return;
-      if (Math.abs(e.clientX - glisse.x) > 5) glisse.bouge = true;
+      if (Math.abs(e.clientX - glisse.x) > 5 || Math.abs(e.clientY - glisse.y) > 5) glisse.bouge = true;
       if (!glisse.bouge) return;
-      glisse.cible = cibleInsertion(xSvg(e));
+      // Tirée nettement au-dessus ou au-dessous du dessin : la couche sera retirée au lâcher.
+      const r = document.querySelector('#labo-scene svg').getBoundingClientRect();
+      glisse.jeter = A.paroi().couches.length > 1 && (e.clientY < r.top - 30 || e.clientY > r.bottom + 30);
+      glisse.cible = glisse.jeter ? null : cibleInsertion(xSvg(e));
       dessinerScene();
     });
     scene.addEventListener('pointerup', function () {
@@ -480,6 +506,7 @@
       const g = glisse;
       glisse = null;
       if (!g.bouge) { selection = selection === g.index ? null : g.index; dessinerScene(); dessinerEdition(); return; }
+      if (g.jeter) { retirer(g.index); return; }
       let cible = g.cible;
       if (cible === null || cible === g.index || cible === g.index + 1) { dessinerScene(); return; }
       A.modifier(function (p) {
@@ -538,9 +565,9 @@
       const b = e.target.closest('button[data-labo]');
       if (!b) return;
       const k = selection;
+      if (b.dataset.labo === 'retirer') { retirer(k); return; }
       A.modifier(function (p) {
         const cs = p.couches;
-        if (b.dataset.labo === 'retirer' && cs.length > 1) { cs.splice(k, 1); selection = null; }
         if (b.dataset.labo === 'interieur' && k > 0) { cs.splice(k - 1, 0, cs.splice(k, 1)[0]); selection = k - 1; }
         if (b.dataset.labo === 'exterieur' && k < cs.length - 1) { cs.splice(k + 1, 0, cs.splice(k, 1)[0]); selection = k + 1; }
       });

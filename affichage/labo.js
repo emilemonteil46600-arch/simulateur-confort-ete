@@ -4,6 +4,13 @@
    Affichage et animation seulement : AUCUN calcul thermique ici.
    La simulation vient de ConfortTransitoire.simuler (calcul/calcul-transitoire.js) ;
    la paroi est celle de l'atelier (window.ConfortAtelier).
+
+   Ce qu'on dessine :
+   - le mur en coupe, avec la texture de chaque matériau (comme sur un plan) ;
+   - par-dessus, un dégradé de couleur = la TEMPÉRATURE dans l'épaisseur (bleu froid → rouge chaud) ;
+   - la courbe θ(x) ;
+   - des particules de chaleur : elles vont dans le sens du FLUX local, d'autant plus vite que
+     le flux est fort (q = G × ΔT entre deux tranches voisines, valeurs du calcul).
    ========================================================== */
 (function () {
   'use strict';
@@ -17,57 +24,47 @@
   const $ = function (s) { return document.querySelector(s); };
   if (!T || !A || !$('#labo')) return;
 
-  // Dimensions du dessin (unités du viewBox). Sur un écran étroit, le dessin est moins large
-  // (donc tout paraît plus grand une fois mis à l'échelle).
-  let L = 900, PIECE = 150, DEHORS = 150, MUR = 600;
-  const H = 330;
+  // Dimensions du dessin (unités du viewBox). Écran étroit : dessin moins large, donc plus grand à l'écran.
+  let L = 900, PIECE = 160, DEHORS = 160, MUR = 580;
+  const H = 380, HAUT = 94, BAS = 340;
   function adapterDimensions() {
     const etroit = ($('#labo-scene').clientWidth || 900) < 640;
-    L = etroit ? 540 : 900;
-    PIECE = DEHORS = etroit ? 92 : 150;
+    L = etroit ? 560 : 900;
+    PIECE = DEHORS = etroit ? 96 : 160;
     MUR = L - PIECE - DEHORS;
   }
-  const HAUT = 64, BAS = 300;                    // le mur en hauteur
-  const BANDE = 22;                              // bandeau des noms de couches (zone à glisser)
-  const IMAGES_PAR_HEURE = 6;                    // une image toutes les 10 min de simulation
+  const IMAGES_PAR_HEURE = 6;    // une image toutes les 10 min de simulation
+  const NB_PARTICULES = 70;
 
-  // Les couches qu'on ajoute d'un clic (côté intérieur), avec une épaisseur de départ (m).
+  // Les matériaux qu'on glisse dans le mur (ou qu'on ajoute d'un clic, côté intérieur).
   const PALETTE = [
     { materiau: 'plaque-platre', e: 0.013, nom: 'BA13' },
-    { materiau: 'enduit-platre', e: 0.01, nom: 'Enduit plâtre' },
     { materiau: 'laine-verre', e: 0.10, nom: 'Laine de verre' },
-    { materiau: 'laine-roche', e: 0.10, nom: 'Laine de roche' },
     { materiau: 'pse', e: 0.10, nom: 'PSE' },
     { materiau: 'fibre-bois-rigide', e: 0.10, nom: 'Fibre de bois' },
     { materiau: 'beton-arme', e: 0.18, nom: 'Béton' },
     { materiau: 'parpaing', e: 0.20, nom: 'Parpaing' },
-    { materiau: 'brique-pleine', e: 0.22, nom: 'Brique pleine' },
+    { materiau: 'brique-pleine', e: 0.22, nom: 'Brique' },
     { materiau: 'pierre-calcaire', e: 0.40, nom: 'Pierre' },
     { materiau: 'bois-resineux', e: 0.05, nom: 'Bois' },
-    { materiau: 'enduit-ciment', e: 0.015, nom: 'Enduit ext.' }
+    { materiau: 'enduit-ciment', e: 0.015, nom: 'Enduit' }
   ];
-  const VITESSES = [{ id: 1, nom: '1 h/s' }, { id: 3, nom: '3 h/s' }, { id: 8, nom: '8 h/s' }];
-  const SCENARIOS = [{ id: 'echelon', nom: 'Coup de chaud' }, { id: 'journee', nom: 'Journées d\'été' }];
-  const PIECES = [{ id: 'fixe', nom: 'Climatisée (T fixe)' }, { id: 'libre', nom: 'Libre (sans clim)' }];
+  const VITESSES = [{ id: 1, nom: '×1' }, { id: 3, nom: '×3' }, { id: 8, nom: '×8' }];
+  const SCENARIOS = [{ id: 'echelon', nom: '🔥 Coup de chaud' }, { id: 'journee', nom: '🌗 Jour / nuit' }];
+  const PIECES = [{ id: 'fixe', nom: '❄️ Pièce climatisée' }, { id: 'libre', nom: '🏠 Pièce libre' }];
 
-  // Réglages du labo (gardés dans le navigateur, pas des données de calcul à sauvegarder).
+  // Réglages d'affichage du labo (dans le navigateur, hors sauvegarde : ce ne sont pas des données de calcul).
   const CLE = 'bao.confort.labo.affichage';
   const DEFAUT = {
     scenario: 'echelon', tAvant: 20, tApres: 35, duree: 48,
-    piece: 'fixe', tInterieure: 20, aireMur: 10, volume: 50, renouvellement: 0.5, mobilier: 0,
-    vitesse: 3
+    piece: 'fixe', tInterieure: 20, aireMur: 10, volume: 50, renouvellement: 0.5, mobilier: 0, vitesse: 3
   };
   let reglage = Object.assign({}, DEFAUT, BAO.lire(CLE, {}) || {});
   function sauverReglage() { try { localStorage.setItem(CLE, JSON.stringify(reglage)); } catch (e) { /* rien */ } }
 
-  let sim = null;           // résultat de la simulation
-  let position = 0;         // en heures
-  let enCours = false;
-  let dernierInstant = null;
-  let selection = null;     // index de la couche sélectionnée
-  let glisse = null;        // glisser-déposer en cours
-  let rendu = null;         // échelles du graphique (curseur)
-  let echelleT = null;      // [Tmin, Tmax] de toute la simulation
+  let sim = null, position = 0, enCours = false, dernierInstant = null;
+  let selection = null, glisse = null, glissePalette = null, rendu = null, echelleT = null;
+  let particules = [];
 
   /* ==========================================================
      LA SIMULATION
@@ -103,21 +100,21 @@
     echelleT = [Math.floor(mn - 0.5), Math.ceil(mx + 0.5)];
     position = Math.min(position, Number(reglage.duree));
     $('#labo-temps').max = String(Number(reglage.duree) * IMAGES_PAR_HEURE);
+    semerParticules();
     dessinerGraphe();
     dessinerTout();
   }
-
   let attente = null;
   function recalculer() { clearTimeout(attente); attente = setTimeout(lancerCalcul, 120); }
 
   /* ==========================================================
-     LES COULEURS (température → couleur, froid bleu, chaud rouge)
+     COULEURS ET GÉOMÉTRIE DU DESSIN
      ========================================================== */
-  function couleurVar(nom) { return getComputedStyle(document.documentElement).getPropertyValue(nom).trim(); }
-  function hexVersRvb(h) { const v = parseInt(h.replace('#', ''), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; }
+  function hexVersRvb(h) { const v = parseInt(String(h).replace('#', ''), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; }
   let palette = null;
   function lirePalette() {
-    palette = ['--chaleur-froid', '--chaleur-neutre', '--chaleur-chaud'].map(function (n) { return hexVersRvb(couleurVar(n) || '#888888'); });
+    const css = getComputedStyle(document.documentElement);
+    palette = ['--chaleur-froid', '--chaleur-neutre', '--chaleur-chaud'].map(function (n) { return hexVersRvb(css.getPropertyValue(n).trim() || '#888888'); });
   }
   function couleur(t) {
     const f = Math.max(0, Math.min(1, (t - echelleT[0]) / (echelleT[1] - echelleT[0])));
@@ -126,111 +123,182 @@
     return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(a[i] + (b[i] - a[i]) * k); }).join(',') + ')';
   }
 
-  /* ==========================================================
-     LE MUR EN COUPE (SVG)
-     ========================================================== */
-  // Largeur dessinée de chaque couche : proportionnelle à l'épaisseur, avec un minimum pour rester cliquable.
-  function largeursCouches(couches) {
+  // Bords des couches en pixels : largeur proportionnelle à l'épaisseur, avec un minimum pour rester saisissable.
+  function bordsCouches(couches) {
     const total = couches.reduce(function (s, c) { return s + c.e; }, 0);
-    const l = couches.map(function (c) { return Math.max(26, c.e / total * MUR); });
+    const l = couches.map(function (c) { return Math.max(30, c.e / total * MUR); });
     const somme = l.reduce(function (s, x) { return s + x; }, 0);
     const bords = [PIECE];
     l.forEach(function (x) { bords.push(bords[bords.length - 1] + x * MUR / somme); });
     return bords;
   }
+  function versPixel(couches, bords, x) {
+    let cumul = 0;
+    for (let k = 0; k < couches.length; k++) {
+      if (x <= cumul + couches[k].e + 1e-12) return bords[k] + (x - cumul) / couches[k].e * (bords[k + 1] - bords[k]);
+      cumul += couches[k].e;
+    }
+    return bords[bords.length - 1];
+  }
+  function imageCourante() { return Math.max(0, Math.min(sim.temps.length - 1, Math.round(position * IMAGES_PAR_HEURE))); }
 
-  function imageCourante() {
-    const i = Math.max(0, Math.min(sim.temps.length - 1, Math.round(position * IMAGES_PAR_HEURE)));
-    return i;
+  // Flux local (W/m², positif vers la pièce) à chaque interface : F[i] = G[i] × (T à droite − T à gauche).
+  function fluxInterfaces(i) {
+    const pr = sim.profils[i], Gc = sim.conductances, N = pr.length;
+    const F = [];
+    for (let k = 0; k <= N; k++) {
+      const gauche = k === 0 ? sim.tPiece[i] : pr[k - 1];
+      const droite = k === N ? sim.tExt[i] : pr[k];
+      F.push(Gc[k] * (droite - gauche));
+    }
+    return F;
   }
 
+  /* ==========================================================
+     LE MUR EN COUPE (SVG)
+     ========================================================== */
+  const TEXTURES = {
+    beton: '<pattern id="tx-beton" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="4" cy="5" r="1.4"/><circle cx="15" cy="9" r="0.9"/><circle cx="9" cy="17" r="1.6"/><circle cx="19" cy="19" r="0.8"/><path d="M12 3l2 1-1 2z"/></pattern>',
+    maconnerie: '<pattern id="tx-maconnerie" width="40" height="20" patternUnits="userSpaceOnUse"><path d="M0 0.5h40M0 10.5h40M20 0v10M0 10v10M40 10v10" fill="none" stroke-width="1.2"/></pattern>',
+    isolant: '<pattern id="tx-isolant" width="24" height="16" patternUnits="userSpaceOnUse"><path d="M0 8c4-8 8-8 12 0s8 8 12 0" fill="none" stroke-width="1.3"/></pattern>',
+    bois: '<pattern id="tx-bois" width="30" height="12" patternUnits="userSpaceOnUse"><path d="M0 4c8-2 14 2 30 0M0 10c10 1 18-2 30 0" fill="none" stroke-width="1"/></pattern>',
+    revetement: '<pattern id="tx-revetement" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="0.5"/></pattern>'
+  };
+
   function svgCoupe() {
-    const p = A.paroi();
-    if (!sim) return '<div class="alerte attention">Complète les couches de la paroi pour lancer le labo.</div>';
+    if (!sim) return '<div class="alerte attention" style="margin:12px">Complète les couches de la paroi pour lancer le labo.</div>';
     const i = imageCourante();
-    const couches = sim.couches;
-    const bords = largeursCouches(couches);
-    const xMur = function (x) {   // position réelle dans le mur (m) → pixel
-      let cumul = 0;
-      for (let k = 0; k < couches.length; k++) {
-        if (x <= cumul + couches[k].e + 1e-12) return bords[k] + (x - cumul) / couches[k].e * (bords[k + 1] - bords[k]);
-        cumul += couches[k].e;
-      }
-      return bords[bords.length - 1];
-    };
-    const yT = function (t) { return BAS - (t - echelleT[0]) / (echelleT[1] - echelleT[0]) * (BAS - HAUT); };
+    const couches = sim.couches, bords = bordsCouches(couches);
+    const yT = function (t) { return BAS - 12 - (t - echelleT[0]) / (echelleT[1] - echelleT[0]) * (BAS - HAUT - 24); };
     const ta = sim.tPiece[i], te = sim.tExt[i], q = sim.fluxInt[i];
     const profil = sim.profils[i];
+    const h = sim.temps[i] % 24;
+    const jour = reglage.scenario === 'echelon' || (h > 6 && h < 20.5);
 
-    let s = '<svg class="labo-svg" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Coupe du mur : température dans l\'épaisseur et flux qui entre dans la pièce">';
-    // L'air de la pièce et l'air extérieur, colorés par leur température.
-    s += '<rect x="0" y="' + HAUT + '" width="' + PIECE + '" height="' + (BAS - HAUT) + '" fill="' + couleur(ta) + '" class="labo-air"/>';
-    s += '<rect x="' + (L - DEHORS) + '" y="' + HAUT + '" width="' + DEHORS + '" height="' + (BAS - HAUT) + '" fill="' + couleur(te) + '" class="labo-air"/>';
-    // Les tranches du mur, chacune de sa couleur : c'est la carte des températures.
-    sim.cellules.forEach(function (c, k) {
-      const x0 = xMur(c.x0), x1 = xMur(c.x1);
-      s += '<rect x="' + x0.toFixed(2) + '" y="' + HAUT + '" width="' + (x1 - x0 + 0.6).toFixed(2) + '" height="' + (BAS - HAUT) + '" fill="' + couleur(profil[k]) + '"/>';
-    });
-    // Les limites et les noms des couches (le bandeau sert à glisser).
+    let s = '<svg class="labo-svg" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Coupe du mur : température dans l\'épaisseur et chaleur qui entre dans la pièce">';
+    // Textures et dégradé de température (une couleur par tranche, fondues en un dégradé continu).
+    s += '<defs>' + Object.keys(TEXTURES).map(function (k) { return TEXTURES[k]; }).join('') +
+      '<linearGradient id="labo-degrade" gradientUnits="userSpaceOnUse" x1="' + PIECE + '" x2="' + (L - DEHORS) + '" y1="0" y2="0">' +
+      '<stop offset="0" stop-color="' + couleur(sim.tSi[i]) + '"/>' +
+      sim.cellules.map(function (c, k) {
+        return '<stop offset="' + ((versPixel(couches, bords, c.xc) - PIECE) / MUR).toFixed(4) + '" stop-color="' + couleur(profil[k]) + '"/>';
+      }).join('') + '<stop offset="1" stop-color="' + couleur(sim.tSe[i]) + '"/></linearGradient>' +
+      '<radialGradient id="labo-halo"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>';
+
+    // L'air : une teinte légère de sa température.
+    s += '<rect x="0" y="0" width="' + PIECE + '" height="' + H + '" fill="' + couleur(ta) + '" class="labo-air"/>';
+    s += '<rect x="' + (L - DEHORS) + '" y="0" width="' + DEHORS + '" height="' + H + '" fill="' + couleur(te) + '" class="labo-air"/>';
+
+    // Le mur : dégradé thermique, puis la texture de chaque matériau par-dessus.
+    s += '<rect x="' + PIECE + '" y="' + HAUT + '" width="' + MUR + '" height="' + (BAS - HAUT) + '" fill="url(#labo-degrade)"/>';
     couches.forEach(function (c, k) {
-      const x0 = bords[k], x1 = bords[k + 1];
-      const isolant = c.materiau.famille === 'isolant';
-      s += '<rect x="' + x0.toFixed(1) + '" y="' + HAUT + '" width="' + (x1 - x0).toFixed(1) + '" height="' + (BAS - HAUT) + '" class="labo-couche' + (isolant ? ' isolant' : '') + (selection === k ? ' choisie' : '') + '"/>';
-      s += '<g class="labo-poignee' + (selection === k ? ' choisie' : '') + (glisse && glisse.index === k && glisse.bouge ? ' tenue' : '') + '" data-couche="' + k + '">' +
-        '<rect x="' + (x0 + 1).toFixed(1) + '" y="' + (HAUT - BANDE - 4) + '" width="' + (x1 - x0 - 2).toFixed(1) + '" height="' + BANDE + '" rx="6"/>' +
-        '<text x="' + ((x0 + x1) / 2).toFixed(1) + '" y="' + (HAUT - BANDE / 2 - 0.5).toFixed(1) + '" text-anchor="middle">' + esc(nomCourt(c.materiau.nom, x1 - x0)) + '</text>' +
-        '<text x="' + ((x0 + x1) / 2).toFixed(1) + '" y="' + (BAS + 16) + '" text-anchor="middle" class="labo-ep">' + nb(c.e * 100, c.e < 0.02 ? 1 : 0) + ' cm</text></g>';
+      const x0 = bords[k], x1 = bords[k + 1], fam = c.materiau.famille || 'revetement';
+      s += '<rect x="' + x0.toFixed(1) + '" y="' + HAUT + '" width="' + (x1 - x0).toFixed(1) + '" height="' + (BAS - HAUT) + '" fill="url(#tx-' + fam + ')" class="labo-texture tx-' + fam + '"/>';
+      if (k > 0) s += '<line x1="' + x0.toFixed(1) + '" x2="' + x0.toFixed(1) + '" y1="' + HAUT + '" y2="' + BAS + '" class="labo-joint"/>';
+      if (selection === k) s += '<rect x="' + (x0 + 1.5).toFixed(1) + '" y="' + (HAUT + 1.5) + '" width="' + (x1 - x0 - 3).toFixed(1) + '" height="' + (BAS - HAUT - 3) + '" class="labo-choix-cadre"/>';
     });
-    // Repère de la température : graduations à gauche.
-    for (let t = Math.ceil(echelleT[0] / 5) * 5; t <= echelleT[1]; t += 5) {
-      s += '<line x1="' + PIECE + '" x2="' + (L - DEHORS) + '" y1="' + yT(t).toFixed(1) + '" y2="' + yT(t).toFixed(1) + '" class="labo-grille"/>';
-      s += '<line x1="0" x2="' + PIECE + '" y1="' + yT(t).toFixed(1) + '" y2="' + yT(t).toFixed(1) + '" class="labo-grille"/>';
-      s += '<text x="6" y="' + (yT(t) - 3).toFixed(1) + '" class="labo-grad">' + t + ' °C</text>';
-    }
-    // La courbe θ(x) : air de la pièce → face intérieure → tranches → face extérieure → air extérieur.
-    const pts = [[8, ta], [PIECE, sim.tSi[i]]];
-    sim.cellules.forEach(function (c, k) { pts.push([xMur(c.xc), profil[k]]); });
-    pts.push([L - DEHORS, sim.tSe[i]], [L - 8, te]);
+    s += '<rect x="' + PIECE + '" y="' + HAUT + '" width="' + MUR + '" height="' + (BAS - HAUT) + '" class="labo-contour"/>';
+
+    // Particules de chaleur (sens et vitesse = flux local).
+    particules.forEach(function (pt) {
+      s += '<circle cx="' + pt.x.toFixed(1) + '" cy="' + (HAUT + 8 + pt.y * (BAS - HAUT - 16)).toFixed(1) + '" r="2.6" class="labo-particule" fill-opacity="' + pt.o.toFixed(2) + '"/>';
+    });
+
+    // La courbe θ(x).
+    const pts = [[PIECE - 22, ta], [PIECE, sim.tSi[i]]];
+    sim.cellules.forEach(function (c, k) { pts.push([versPixel(couches, bords, c.xc), profil[k]]); });
+    pts.push([L - DEHORS, sim.tSe[i]], [L - DEHORS + 22, te]);
     const chemin = pts.map(function (pt) { return pt[0].toFixed(1) + ',' + yT(pt[1]).toFixed(1); }).join(' ');
     s += '<polyline points="' + chemin + '" class="labo-courbe-halo"/><polyline points="' + chemin + '" class="labo-courbe"/>';
-    // Le flux qui entre dans la pièce : une flèche dont la longueur suit |q|.
-    s += fleche(PIECE - 6, (HAUT + BAS) / 2 + 40, q, 'entre dans la pièce');
-    // Étiquettes des airs.
-    s += etiquette(PIECE / 2, HAUT + 22, 'Pièce', ta);
-    s += etiquette(L - DEHORS / 2, HAUT + 22, 'Dehors', te);
-    if (glisse && glisse.bouge && glisse.cible !== null) {
-      const xc = bords[glisse.cible];
-      s += '<line x1="' + xc + '" x2="' + xc + '" y1="' + (HAUT - BANDE - 8) + '" y2="' + (BAS + 4) + '" class="labo-insertion"/>';
+
+    // Les noms des couches (on les attrape pour glisser) et les épaisseurs.
+    couches.forEach(function (c, k) {
+      const x0 = bords[k], x1 = bords[k + 1], milieu = (x0 + x1) / 2;
+      const tenue = glisse && glisse.index === k && glisse.bouge;
+      s += '<g class="labo-poignee' + (selection === k ? ' choisie' : '') + (tenue ? ' tenue' : '') + '" data-couche="' + k + '">' +
+        '<rect x="' + (x0 + 2).toFixed(1) + '" y="' + (HAUT - 32) + '" width="' + (x1 - x0 - 4).toFixed(1) + '" height="24" rx="12"/>' +
+        '<text x="' + milieu.toFixed(1) + '" y="' + (HAUT - 16) + '" text-anchor="middle">' + esc(nomCourt(c.materiau.nom, x1 - x0 - 8)) + '</text></g>' +
+        '<text x="' + milieu.toFixed(1) + '" y="' + (BAS + 22) + '" text-anchor="middle" class="labo-ep">' + nb(c.e * 100, c.e < 0.02 ? 1 : 0) + ' cm</text>';
+    });
+
+    // Dehors : soleil (ou lune la nuit) et température.
+    const xs = L - DEHORS / 2;
+    s += jour ? soleil(xs, HAUT + 24) : lune(xs, HAUT + 24);
+    s += '<text x="' + xs + '" y="' + (HAUT + 92) + '" text-anchor="middle" class="labo-t-grande">' + nb(te, 1) + '°</text>';
+    s += '<text x="' + xs + '" y="' + (HAUT + 112) + '" text-anchor="middle" class="labo-legende">dehors</text>';
+    // La pièce : sa température et la chaleur qui entre.
+    const xp = PIECE / 2;
+    s += '<text x="' + xp + '" y="' + (HAUT + 44) + '" text-anchor="middle" class="labo-legende">' + (reglage.piece === 'libre' ? 'pièce' : 'pièce (climatisée)') + '</text>';
+    s += '<text x="' + xp + '" y="' + (HAUT + 92) + '" text-anchor="middle" class="labo-t-grande">' + nb(ta, 1) + '°</text>';
+    s += fleche(PIECE - 10, BAS - 70, q);
+
+    // Repère d'insertion pendant un glisser-déposer.
+    const cible = (glisse && glisse.bouge) ? glisse.cible : (glissePalette && glissePalette.dansMur ? glissePalette.cible : null);
+    if (cible !== null && cible !== undefined) {
+      s += '<line x1="' + bords[cible] + '" x2="' + bords[cible] + '" y1="' + (HAUT - 36) + '" y2="' + (BAS + 6) + '" class="labo-insertion"/>';
     }
-    s += '<text x="' + (PIECE / 2) + '" y="' + (H - 6) + '" text-anchor="middle" class="labo-grad">intérieur</text>';
-    s += '<text x="' + (L - DEHORS / 2) + '" y="' + (H - 6) + '" text-anchor="middle" class="labo-grad">extérieur</text>';
-    s += '</svg>';
-    return s;
+    return s + '</svg>';
   }
 
   function nomCourt(nom, largeur) {
-    const max = Math.floor(largeur / 7);
-    const court = nom.replace(/ \(.*\)$/, '');
+    const max = Math.floor(largeur / 6.6);
+    const court = nom.replace(/ \(.*\)$/, '').replace('Polystyrène expansé', 'PSE');
     return court.length <= max ? court : (max > 3 ? court.slice(0, max - 1) + '…' : '');
   }
 
-  function etiquette(x, y, nom, t) {
-    const w = Math.min(104, PIECE - 8);
-    return '<g class="labo-etiquette"><rect x="' + (x - w / 2) + '" y="' + (y - 15) + '" width="' + w + '" height="24" rx="12"/>' +
-      '<text x="' + x + '" y="' + (y + 2) + '" text-anchor="middle">' + nom + ' ' + nb(t, 1) + ' °C</text></g>';
+  function soleil(x, y) {
+    let rayons = '';
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      rayons += '<line x1="' + (x + 19 * Math.cos(a)).toFixed(1) + '" y1="' + (y + 19 * Math.sin(a)).toFixed(1) + '" x2="' + (x + 27 * Math.cos(a)).toFixed(1) + '" y2="' + (y + 27 * Math.sin(a)).toFixed(1) + '"/>';
+    }
+    return '<g class="labo-soleil"><circle cx="' + x + '" cy="' + y + '" r="34" fill="url(#labo-halo)" opacity=".5"/>' + rayons + '<circle cx="' + x + '" cy="' + y + '" r="13"/></g>';
+  }
+  function lune(x, y) {
+    return '<g class="labo-lune"><path d="M' + (x + 6) + ' ' + (y - 14) + 'a14 14 0 1 0 8 24a11 11 0 1 1 -8 -24z"/></g>';
   }
 
-  // Flèche horizontale dans la pièce : vers la gauche si la chaleur entre (q > 0), vers la droite si elle sort.
-  function fleche(xMurInt, y, q, texte) {
-    const longueur = Math.min(PIECE - 30, 14 + Math.abs(q) * 9);
-    const sens = q >= 0 ? -1 : 1;
-    const x1 = q >= 0 ? xMurInt : xMurInt - longueur, x2 = q >= 0 ? xMurInt - longueur : xMurInt;
-    const pointe = q >= 0 ? x2 : x2;
-    let s = '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" class="labo-fleche"/>';
-    s += '<polygon points="' + pointe + ',' + y + ' ' + (pointe - sens * 10) + ',' + (y - 6) + ' ' + (pointe - sens * 10) + ',' + (y + 6) + '" class="labo-pointe"/>';
-    s += '<text x="' + (xMurInt - 4) + '" y="' + (y + 22) + '" text-anchor="end" class="labo-flux">' + (q >= 0 ? '' : '−') + nb(Math.abs(q), 1) + ' W/m²</text>';
-    s += '<text x="' + (xMurInt - 4) + '" y="' + (y + 36) + '" text-anchor="end" class="labo-grad">' + (q >= 0 ? texte : 'sort de la pièce') + '</text>';
+  // Grosse flèche dans la pièce : la chaleur qui entre (vers la gauche) ou qui sort (vers la droite).
+  function fleche(xMur, y, q) {
+    const longueur = Math.min(PIECE - 30, 16 + Math.abs(q) * 8);
+    const entre = q >= 0;
+    const xa = entre ? xMur : xMur - longueur, xb = entre ? xMur - longueur : xMur;
+    const dir = entre ? -1 : 1;
+    let s = '<g class="labo-fleche-g' + (Math.abs(q) < 0.05 ? ' nulle' : '') + '">';
+    s += '<line x1="' + xa + '" y1="' + y + '" x2="' + (xb - dir * 8) + '" y2="' + y + '" class="labo-fleche"/>';
+    s += '<polygon points="' + xb + ',' + y + ' ' + (xb - dir * 13) + ',' + (y - 9) + ' ' + (xb - dir * 13) + ',' + (y + 9) + '" class="labo-pointe"/>';
+    s += '<text x="' + (PIECE / 2) + '" y="' + (y + 30) + '" text-anchor="middle" class="labo-flux">' + nb(Math.abs(q), 1) + ' W/m²</text>';
+    s += '<text x="' + (PIECE / 2) + '" y="' + (y + 46) + '" text-anchor="middle" class="labo-legende">' + (entre ? 'chaleur qui entre' : 'chaleur qui sort') + '</text></g>';
     return s;
+  }
+
+  /* ==========================================================
+     PARTICULES DE CHALEUR
+     Vitesse (px/s) ∝ flux local ; elles naissent du côté d'où vient la chaleur.
+     ========================================================== */
+  function semerParticules() {
+    particules = [];
+    for (let k = 0; k < NB_PARTICULES; k++) particules.push({ x: PIECE + Math.random() * MUR, y: Math.random(), o: 0 });
+    if (sim) bougerParticules(0);
+  }
+  function bougerParticules(dt) {
+    if (!sim) return;
+    const i = imageCourante();
+    const F = fluxInterfaces(i);
+    const couches = sim.couches, bords = bordsCouches(couches);
+    const limites = sim.cellules.map(function (c) { return versPixel(couches, bords, c.x1); });
+    const qMax = Math.max(0.5, Math.max.apply(null, F.map(Math.abs)));
+    particules.forEach(function (pt) {
+      let k = 0;
+      while (k < limites.length - 1 && pt.x > limites[k]) k++;
+      const q = (F[k] + F[k + 1]) / 2;                // flux local, positif vers la pièce (vers la gauche)
+      const v = Math.sign(q) * Math.min(220, Math.abs(q) * 7);
+      pt.x -= v * dt;
+      // Bien visibles là où passe beaucoup de chaleur, effacées là où il n'en passe presque pas.
+      pt.o = Math.abs(q) / qMax < 0.05 ? 0 : Math.min(0.95, 0.2 + 0.8 * Math.abs(q) / qMax);
+      if (pt.x < PIECE) { pt.x = L - DEHORS - Math.random() * 6; pt.y = Math.random(); }
+      if (pt.x > L - DEHORS) { pt.x = PIECE + Math.random() * 6; pt.y = Math.random(); }
+    });
   }
 
   /* ==========================================================
@@ -238,42 +306,38 @@
      ========================================================== */
   function dessinerHorloge() {
     if (!sim) return;
-    const i = imageCourante();
-    const h = sim.temps[i];
-    const jour = Math.floor(h / 24) + 1, hh = Math.floor(h % 24), mm = Math.round((h % 1) * 60) % 60;
-    $('#labo-jour').textContent = 'Jour ' + jour;
-    $('#labo-heure').textContent = hh + ' h ' + String(mm).padStart(2, '0');
-    $('#labo-dehors').textContent = 'dehors ' + nb(sim.tExt[i], 1) + ' °C';
+    const i = imageCourante(), h = sim.temps[i];
+    $('#labo-jour').textContent = 'Jour ' + (Math.floor(h / 24) + 1);
+    $('#labo-heure').textContent = Math.floor(h % 24) + ' h ' + String(Math.round((h % 1) * 60) % 60).padStart(2, '0');
     $('#labo-temps').value = String(i);
     if (rendu) {
-      const x = rendu.X(h);
       const ligne = document.querySelector('#labo-graphe .labo-curseur');
-      if (ligne) { ligne.setAttribute('x1', x); ligne.setAttribute('x2', x); }
+      if (ligne) { ligne.setAttribute('x1', rendu.X(h)); ligne.setAttribute('x2', rendu.X(h)); }
     }
   }
 
   function dessinerMesures() {
     if (!sim) { $('#labo-mesures').innerHTML = ''; return; }
     const i = imageCourante();
-    const tuile = function (nom, val, dit) { return '<div class="tuile"><span class="tuile-nom">' + nom + '</span><span class="tuile-val">' + val + '</span>' + (dit ? '<span class="tuile-dit">' + dit + '</span>' : '') + '</div>'; };
     const d = P.caracteristiquesDynamiques(sim.couches, sim.rs);
-    let html = '<div class="tuiles">' +
-      tuile('Flux entrant maintenant', nb(sim.fluxInt[i], 1) + ' <small>W/m²</small>', sim.fluxInt[i] >= 0 ? 'la chaleur entre' : 'la chaleur sort') +
-      tuile('Chaleur entrée depuis le début', nb(sim.energieInt[i], 0) + ' <small>Wh/m²</small>', '') +
-      tuile('Face intérieure', nb(sim.tSi[i], 1) + ' <small>°C</small>', '') +
-      tuile(reglage.piece === 'libre' ? 'Air de la pièce' : 'Pièce (fixée)', nb(sim.tPiece[i], 1) + ' <small>°C</small>', reglage.piece === 'libre' ? 'max ' + nb(Math.max.apply(null, sim.tPiece), 1) + ' °C' : '') + '</div>';
+    const grand = function (val, unite, nom) { return '<div class="labo-mesure"><b>' + val + '<small>' + unite + '</small></b><span>' + nom + '</span></div>'; };
+    let html = '<div class="labo-mesures">' +
+      grand(nb(sim.tPiece[i], 1), ' °C', reglage.piece === 'libre' ? 'Air de la pièce' : 'Pièce (fixée)') +
+      grand(nb(sim.tSi[i], 1), ' °C', 'Face intérieure du mur') +
+      grand(nb(sim.fluxInt[i], 1), ' W/m²', sim.fluxInt[i] >= 0 ? 'Chaleur qui entre' : 'Chaleur qui sort') +
+      grand(nb(sim.energieInt[i], 0), ' Wh/m²', 'Entrée depuis le début') + '</div>';
+    let lecture;
     if (reglage.scenario === 'echelon') {
       const t50 = T.tempsDeReponse(sim.temps, reglage.piece === 'libre' ? sim.tPiece : sim.tSi, 0.5);
-      const regime = d.U * (Number(reglage.tApres) - Number(reglage.tInterieure));
-      html += '<p class="aide labo-lecture">' + (reglage.piece === 'libre'
-        ? 'La pièce fait la moitié du chemin vers sa température finale en <b>' + (t50 === null ? 'plus de ' + reglage.duree + ' h' : nb(t50, 1) + ' h') + '</b>.'
-        : 'La face intérieure fait la moitié de sa montée en <b>' + (t50 === null ? 'plus de ' + reglage.duree + ' h' : nb(t50, 1) + ' h') + '</b>. ' +
-          'Au bout d\'un temps infini, le flux tend vers U × ΔT = ' + nb(d.U, 3) + ' × ' + nb(Number(reglage.tApres) - Number(reglage.tInterieure), 1) + ' = <b>' + nb(regime, 1) + ' W/m²</b> (le régime permanent de l\'hiver).') + '</p>';
+      const t = t50 === null ? 'plus de ' + reglage.duree + ' h' : nb(t50, 1) + ' h';
+      lecture = reglage.piece === 'libre'
+        ? 'La pièce fait la moitié du chemin vers sa température finale en <b>' + t + '</b>.'
+        : 'La face intérieure fait la moitié de sa montée en <b>' + t + '</b>. À très long terme, le flux tend vers U × ΔT = ' + nb(d.U, 3) + ' × ' + nb(Number(reglage.tApres) - Number(reglage.tInterieure), 1) + ' = <b>' + nb(d.U * (Number(reglage.tApres) - Number(reglage.tInterieure)), 1) + ' W/m²</b>.';
     } else {
-      html += '<p class="aide labo-lecture">Régime établi après 4 jours de préchauffage. Le pic de flux arrive environ <b>' + nb(d.dephasage, 1) + ' h</b> après le pic dehors (déphasage), réduit à <b>' + nb(d.amortissement * 100, 0) + ' %</b> de ce que donnerait U seul (amortissement).</p>';
+      lecture = 'Le pic de chaleur arrive environ <b>' + nb(d.dephasage, 1) + ' h</b> après le pic dehors, réduit à <b>' + nb(d.amortissement * 100, 0) + ' %</b> de ce que donnerait U seul.';
     }
-    if (sim.bilan) html += '<p class="aide labo-lecture">Contrôle de conservation de l\'énergie : écart de ' + nb(sim.bilan.ecartRelatif * 100, 6) + ' %.</p>';
-    $('#labo-mesures').innerHTML = html;
+    if (sim.bilan) lecture += ' <span class="muet">Contrôle de conservation de l\'énergie : écart de ' + nb(sim.bilan.ecartRelatif * 100, 6) + ' %.</span>';
+    $('#labo-mesures').innerHTML = html + '<p class="labo-lecture">' + lecture + '</p>';
   }
 
   function dessinerGraphe() {
@@ -298,12 +362,12 @@
     if (selection === null || !p.couches[selection]) { $('#labo-edition').innerHTML = ''; return; }
     const c = p.couches[selection];
     const options = A.materiaux().map(function (m) { return '<option value="' + esc(m.id) + '"' + (m.id === c.materiau ? ' selected' : '') + '>' + esc(m.nom) + '</option>'; }).join('');
-    $('#labo-edition').innerHTML = '<div class="labo-outil"><b>Couche ' + (selection + 1) + '</b>' +
+    $('#labo-edition').innerHTML = '<div class="labo-outil"><span class="labo-outil-n">' + (selection + 1) + '</span>' +
       '<select data-labo="materiau" aria-label="Matériau">' + options + '</select>' +
-      '<label class="labo-ep-curseur">Épaisseur <input type="range" min="0.5" max="50" step="0.5" value="' + (c.e * 100) + '" data-labo="e"><output>' + nb(c.e * 100, 1) + ' cm</output></label>' +
-      '<button type="button" class="bouton discret" data-labo="interieur" title="Vers l\'intérieur">← intérieur</button>' +
-      '<button type="button" class="bouton discret" data-labo="exterieur" title="Vers l\'extérieur">extérieur →</button>' +
-      '<button type="button" class="bouton discret danger" data-labo="retirer">✕ Retirer</button></div>';
+      '<label class="labo-ep-curseur"><input type="range" min="0.5" max="50" step="0.5" value="' + (c.e * 100) + '" data-labo="e" aria-label="Épaisseur"><output>' + nb(c.e * 100, 1) + ' cm</output></label>' +
+      '<button type="button" class="labo-rond" data-labo="interieur" title="Vers l\'intérieur" aria-label="Vers l\'intérieur">←</button>' +
+      '<button type="button" class="labo-rond" data-labo="exterieur" title="Vers l\'extérieur" aria-label="Vers l\'extérieur">→</button>' +
+      '<button type="button" class="labo-rond danger" data-labo="retirer" title="Retirer" aria-label="Retirer la couche">✕</button></div>';
   }
 
   function dessinerReglages() {
@@ -318,27 +382,27 @@
     };
     const onde = A.onde();
     $('#labo-champs-scenario').innerHTML = reglage.scenario === 'echelon'
-      ? champ('tAvant', 'Avant', '°C') + champ('tApres', 'Après le coup de chaud', '°C') + champ('duree', 'Durée', 'h')
-      : '<p class="aide" style="margin:0">Onde de l\'atelier : ' + nb(onde.tMoyenne, 1) + ' ± ' + nb(onde.amplitude, 1) + ' °C, maximum à ' + nb(onde.heureMax, 1) + ' h (réglable plus bas, « Une journée chaude »).</p>' + champ('duree', 'Durée', 'h');
-    $('#labo-champs-piece').innerHTML = champ('tInterieure', reglage.piece === 'libre' ? 'T de départ' : 'T de la pièce', '°C') +
-      (reglage.piece === 'libre' ? champ('aireMur', 'Surface de ce mur', 'm²') + champ('volume', 'Volume de la pièce', 'm³') +
-        champ('renouvellement', 'Renouvellement d\'air', 'vol/h') + champ('mobilier', 'Mobilier (H)', 'kJ/K') : '');
+      ? champ('tAvant', 'Dehors avant', '°C') + champ('tApres', 'Dehors après', '°C') + champ('duree', 'Durée', 'h')
+      : '<p class="aide" style="margin:0;flex-basis:100%">Journées de l\'atelier : ' + nb(onde.tMoyenne, 1) + ' ± ' + nb(onde.amplitude, 1) + ' °C, maximum à ' + nb(onde.heureMax, 1) + ' h (réglage « Une journée chaude », plus bas).</p>' + champ('duree', 'Durée', 'h');
+    $('#labo-champs-piece').innerHTML = champ('tInterieure', reglage.piece === 'libre' ? 'Pièce au départ' : 'Pièce', '°C') +
+      (reglage.piece === 'libre' ? champ('aireMur', 'Surface de ce mur', 'm²') + champ('volume', 'Volume', 'm³') +
+        champ('renouvellement', 'Air neuf', 'vol/h') + champ('mobilier', 'Mobilier (H)', 'kJ/K') : '');
   }
 
   function dessinerPalette() {
-    $('#labo-palette').innerHTML = '<span class="aide">Ajouter côté intérieur :</span>' + PALETTE.map(function (x, i) {
-      return '<button type="button" class="puce-couche" data-palette="' + i + '">+ ' + esc(x.nom) + '</button>';
+    const mats = A.materiaux();
+    $('#labo-palette').innerHTML = PALETTE.map(function (x, i) {
+      const m = mats.find(function (y) { return y.id === x.materiau; });
+      const fam = m ? m.famille : 'revetement';
+      return '<button type="button" class="tuile-materiau" data-palette="' + i + '" title="Glisse-moi dans le mur (ou clique : côté intérieur)">' +
+        '<svg viewBox="0 0 44 30" aria-hidden="true"><defs>' + TEXTURES[fam].replace('id="tx-' + fam + '"', 'id="mini-' + fam + '-' + i + '"') + '</defs>' +
+        '<rect width="44" height="30" rx="5" class="mini-fond mini-' + fam + '"/><rect width="44" height="30" rx="5" fill="url(#mini-' + fam + '-' + i + ')" class="labo-texture tx-' + fam + '"/></svg>' +
+        '<span>' + esc(x.nom) + '</span></button>';
     }).join('');
   }
 
   function dessinerScene() { adapterDimensions(); $('#labo-scene').innerHTML = svgCoupe(); }
-
-  function dessinerTout() {
-    dessinerScene();
-    dessinerHorloge();
-    dessinerMesures();
-    dessinerEdition();
-  }
+  function dessinerTout() { dessinerScene(); dessinerHorloge(); dessinerMesures(); dessinerEdition(); }
 
   /* ==========================================================
      LE TEMPS QUI PASSE
@@ -346,7 +410,9 @@
   function boucle(instant) {
     if (!enCours) return;
     if (dernierInstant !== null && sim) {
-      position += (instant - dernierInstant) / 1000 * Number(reglage.vitesse);
+      const dt = Math.min(0.1, (instant - dernierInstant) / 1000);
+      position += dt * Number(reglage.vitesse);
+      bougerParticules(dt);
       if (position >= Number(reglage.duree)) { position = Number(reglage.duree); arreter(); }
       dessinerScene(); dessinerHorloge(); dessinerMesures();
     }
@@ -357,28 +423,44 @@
     if (!sim) return;
     if (position >= Number(reglage.duree)) position = 0;
     enCours = true; dernierInstant = null;
-    $('#labo-jouer').textContent = '⏸ Pause';
+    $('#labo-jouer').textContent = '❚❚';
+    $('#labo-jouer').setAttribute('aria-label', 'Pause');
     requestAnimationFrame(boucle);
   }
-  function arreter() { enCours = false; $('#labo-jouer').textContent = '▶ Lancer'; }
+  function arreter() {
+    enCours = false;
+    $('#labo-jouer').textContent = '▶';
+    $('#labo-jouer').setAttribute('aria-label', 'Lancer');
+  }
 
   /* ==========================================================
-     GLISSER-DÉPOSER DES COUCHES
+     GLISSER-DÉPOSER : déplacer une couche, ou poser un matériau de la palette
      ========================================================== */
   function xSvg(e) {
     const svg = document.querySelector('#labo-scene svg');
     const r = svg.getBoundingClientRect();
     return (e.clientX - r.left) / r.width * L;
   }
+  function dansLeMur(e) {
+    const svg = document.querySelector('#labo-scene svg');
+    if (!svg) return false;
+    const r = svg.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  }
   function cibleInsertion(x) {
-    const bords = largeursCouches(sim.couches);
+    const bords = bordsCouches(sim.couches);
     let meilleur = 0, ecart = Infinity;
     bords.forEach(function (b, k) { if (Math.abs(b - x) < ecart) { ecart = Math.abs(b - x); meilleur = k; } });
     return meilleur;
   }
+  function inserer(index, x) {
+    A.modifier(function (p) { p.couches.splice(index, 0, { materiau: x.materiau, e: x.e }); });
+    selection = index;
+  }
 
   function brancher() {
     const scene = $('#labo-scene');
+    // Déplacer une couche existante (on attrape son nom).
     scene.addEventListener('pointerdown', function (e) {
       const poignee = e.target.closest('[data-couche]');
       if (!poignee || !sim) return;
@@ -406,27 +488,53 @@
         p.couches.splice(cible, 0, c);
       });
       selection = cible;
-      BAO.notifier('Couche déplacée : regarde ce qui change quand tu relances le temps.');
     });
 
-    $('#labo-palette').addEventListener('click', function (e) {
+    // Poser un matériau de la palette : on le glisse dans le mur (ou on clique : côté intérieur).
+    const palette = $('#labo-palette');
+    palette.addEventListener('pointerdown', function (e) {
       const b = e.target.closest('[data-palette]');
       if (!b) return;
-      const x = PALETTE[Number(b.dataset.palette)];
-      A.modifier(function (p) { p.couches.unshift({ materiau: x.materiau, e: x.e }); });
-      selection = 0;
+      glissePalette = { x: PALETTE[Number(b.dataset.palette)], depart: [e.clientX, e.clientY], bouge: false, fantome: null, dansMur: false, cible: null };
+      palette.setPointerCapture(e.pointerId);
+    });
+    palette.addEventListener('pointermove', function (e) {
+      const g = glissePalette;
+      if (!g) return;
+      if (!g.bouge && Math.hypot(e.clientX - g.depart[0], e.clientY - g.depart[1]) > 6) {
+        g.bouge = true;
+        g.fantome = document.createElement('div');
+        g.fantome.className = 'labo-fantome';
+        g.fantome.textContent = g.x.nom;
+        document.body.appendChild(g.fantome);
+      }
+      if (!g.bouge) return;
+      g.fantome.style.left = e.clientX + 'px';
+      g.fantome.style.top = e.clientY + 'px';
+      g.dansMur = !!sim && dansLeMur(e);
+      g.cible = g.dansMur ? cibleInsertion(xSvg(e)) : null;
+      dessinerScene();
+    });
+    palette.addEventListener('pointerup', function () {
+      const g = glissePalette;
+      glissePalette = null;
+      if (!g) return;
+      if (g.fantome) g.fantome.remove();
+      if (!g.bouge) { inserer(0, g.x); return; }
+      if (g.dansMur && g.cible !== null) inserer(g.cible, g.x); else dessinerScene();
     });
 
-    $('#labo-edition').addEventListener('input', function (e) {
-      if (e.target.dataset.labo !== 'e') return;
-      e.target.nextElementSibling.textContent = nb(Number(e.target.value), 1) + ' cm';
+    // Modifier la couche choisie.
+    const edition = $('#labo-edition');
+    edition.addEventListener('input', function (e) {
+      if (e.target.dataset.labo === 'e') e.target.nextElementSibling.textContent = nb(Number(e.target.value), 1) + ' cm';
     });
-    $('#labo-edition').addEventListener('change', function (e) {
+    edition.addEventListener('change', function (e) {
       const k = selection;
       if (e.target.dataset.labo === 'e') A.modifier(function (p) { p.couches[k].e = Number(e.target.value) / 100; });
       if (e.target.dataset.labo === 'materiau') A.modifier(function (p) { p.couches[k].materiau = e.target.value; });
     });
-    $('#labo-edition').addEventListener('click', function (e) {
+    edition.addEventListener('click', function (e) {
       const b = e.target.closest('button[data-labo]');
       if (!b) return;
       const k = selection;
@@ -439,7 +547,7 @@
     });
 
     $('#labo-jouer').addEventListener('click', function () { if (enCours) arreter(); else lancer(); });
-    $('#labo-zero').addEventListener('click', function () { arreter(); position = 0; dessinerTout(); });
+    $('#labo-zero').addEventListener('click', function () { arreter(); position = 0; semerParticules(); dessinerTout(); });
     $('#labo-temps').addEventListener('input', function (e) { arreter(); position = Number(e.target.value) / IMAGES_PAR_HEURE; dessinerScene(); dessinerHorloge(); dessinerMesures(); });
 
     $('#labo').addEventListener('click', function (e) {
@@ -456,8 +564,9 @@
       const cle = e.target.dataset.reglage;
       if (!cle) return;
       const v = BAO.lireNombre(e.target.value);
+      const temperature = ['tAvant', 'tApres', 'tInterieure'].indexOf(cle) !== -1;
       const positif = ['duree', 'aireMur', 'volume'].indexOf(cle) !== -1;
-      if (!isFinite(v) || (positif && v <= 0) || v < 0 && cle !== 'tAvant' && cle !== 'tApres' && cle !== 'tInterieure' || (cle === 'duree' && v > 240)) {
+      if (!isFinite(v) || (positif && v <= 0) || (!temperature && v < 0) || (cle === 'duree' && v > 240)) {
         BAO.notifier('Valeur invalide.'); dessinerReglages(); return;
       }
       reglage[cle] = v;
@@ -465,17 +574,14 @@
       recalculer();
     });
 
-    // La paroi de l'atelier a changé (tableau, modèle, matériaux…) : on relance le calcul.
     document.addEventListener('confort:paroi', function () {
-      const n = A.paroi().couches.length;
-      if (selection !== null && selection >= n) selection = null;
+      if (selection !== null && selection >= A.paroi().couches.length) selection = null;
       recalculer();
     });
-    // Le thème clair / sombre change les couleurs.
+    document.addEventListener('confort:donnees', dessinerPalette);
     if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { lirePalette(); dessinerTout(); });
-    window.addEventListener('resize', function () { if (!enCours) dessinerScene(); });
-    // L'onglet devient visible : la largeur réelle est enfin connue.
-    document.querySelectorAll('[data-onglet="atelier"]').forEach(function (b) { b.addEventListener('click', function () { setTimeout(dessinerScene, 0); }); });
+    window.addEventListener('resize', function () { if (!enCours) { semerParticules(); dessinerScene(); } });
+    document.querySelectorAll('[data-onglet="atelier"]').forEach(function (b) { b.addEventListener('click', function () { setTimeout(function () { semerParticules(); dessinerScene(); }, 0); }); });
   }
 
   lirePalette();

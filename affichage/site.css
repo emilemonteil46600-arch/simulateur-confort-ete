@@ -244,66 +244,99 @@ body.appli { background: var(--fond); }
 
 /* ==========================================================
    LE LABO ANIMÉ (atelier) : la chaleur qui traverse le mur
-   Échelle de température divergente : froid (bleu) → neutre → chaud (rouge).
+   Température : froid (bleu) → neutre → chaud (rouge), en dégradé continu.
    ========================================================== */
-:root { --chaleur-froid: #2f6db5; --chaleur-neutre: #f4f1ea; --chaleur-chaud: #c8431b; }
-@media (prefers-color-scheme: dark) { :root { --chaleur-froid: #3a7cc9; --chaleur-neutre: #3a3d44; --chaleur-chaud: #e0632e; } }
-.labo { margin-bottom: 16px; }
-.labo-tete { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
-.labo-tete h2 { margin: 0; }
-.labo-tete > div:first-child { flex: 1 1 380px; min-width: 0; }
-.labo-horloge { display: flex; flex-direction: column; align-items: flex-end; background: var(--surface-2); border: 1px solid var(--bord); border-radius: 12px; padding: 8px 14px; min-width: 150px; }
-.labo-horloge span { font-size: .78rem; color: var(--encre-2); }
-.labo-horloge b { font-size: 1.7rem; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -.01em; }
-.labo-palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0 8px; }
-.puce-couche { font: inherit; font-size: .8rem; font-weight: 600; border: 1px solid var(--bord-fort); background: var(--surface); color: var(--encre); border-radius: 99px; padding: 4px 10px; cursor: pointer; }
-.puce-couche:hover { border-color: var(--accent); color: var(--accent); }
-.labo-scene { border-radius: 12px; overflow: hidden; border: 1px solid var(--bord); background: var(--surface-2); touch-action: pan-y; }
+:root { --chaleur-froid: #3b82c4; --chaleur-neutre: #f3efe6; --chaleur-chaud: #d4471c; --texture: #1e232d; }
+@media (prefers-color-scheme: dark) { :root { --chaleur-froid: #3d7fc4; --chaleur-neutre: #3b3f47; --chaleur-chaud: #e0632e; --texture: #000000; } }
+.labo { margin-bottom: 16px; padding: 18px 18px 14px; }
+.labo-tete h2 { margin: 0 0 2px; }
+.labo-tete .aide { margin: 0; }
+.labo-palette { display: flex; gap: 8px; overflow-x: auto; padding: 12px 2px 10px; scrollbar-width: thin; }
+.tuile-materiau { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 74px; padding: 6px 4px; border: 1px solid var(--bord); border-radius: 12px; background: var(--surface); font: inherit; font-size: .72rem; font-weight: 650; color: var(--encre-2); cursor: grab; touch-action: none; transition: transform .12s, border-color .12s, box-shadow .12s; }
+.tuile-materiau:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--ombre); color: var(--encre); }
+.tuile-materiau svg { width: 44px; height: 30px; display: block; }
+.mini-fond { fill: var(--surface-2); stroke: var(--bord-fort); }
+.mini-isolant { fill: #f6e7a6; } .mini-beton { fill: #cfcac1; } .mini-maconnerie { fill: #e7c9a6; } .mini-bois { fill: #e2c193; } .mini-revetement { fill: #f4f2ee; }
+@media (prefers-color-scheme: dark) { .mini-isolant { fill: #6b5c25; } .mini-beton { fill: #5f6168; } .mini-maconnerie { fill: #6a4c35; } .mini-bois { fill: #6b5235; } .mini-revetement { fill: #4a4d55; } }
+.labo-fantome { position: fixed; z-index: 50; transform: translate(-50%, -130%); pointer-events: none; background: var(--accent); color: #fff; font-weight: 700; font-size: .82rem; padding: 5px 12px; border-radius: 99px; box-shadow: var(--ombre); }
+.labo-scene-boite { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--bord); background: var(--surface-2); }
+.labo-scene { touch-action: pan-y; }
 .labo-svg { display: block; width: 100%; height: auto; user-select: none; }
-.labo-air { opacity: .55; }
-.labo-couche { fill: none; stroke: var(--encre); stroke-opacity: .45; stroke-width: 1; }
-.labo-couche.isolant { stroke-dasharray: 5 4; }
-.labo-couche.choisie { stroke: var(--accent); stroke-opacity: 1; stroke-width: 2.5; }
+.labo-horloge { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: baseline; gap: 8px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--bord); border-radius: 99px; padding: 4px 16px; box-shadow: var(--ombre); pointer-events: none; }
+.labo-horloge span { font-size: .78rem; color: var(--encre-2); font-weight: 600; }
+.labo-horloge b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.labo-air { opacity: .32; }
+.labo-texture { pointer-events: none; }
+.labo-texture.tx-beton circle, .labo-texture.tx-beton path, .tx-beton circle, .tx-beton path { fill: var(--texture); fill-opacity: .28; }
+#tx-beton circle, #tx-beton path, [id^="mini-beton"] circle, [id^="mini-beton"] path { fill: var(--texture); fill-opacity: .3; }
+#tx-maconnerie path, [id^="mini-maconnerie"] path { stroke: var(--texture); stroke-opacity: .28; }
+#tx-isolant path, [id^="mini-isolant"] path { stroke: var(--texture); stroke-opacity: .32; }
+#tx-bois path, [id^="mini-bois"] path { stroke: var(--texture); stroke-opacity: .28; }
+#tx-revetement circle, [id^="mini-revetement"] circle { fill: var(--texture); fill-opacity: .25; }
+.labo-joint { stroke: #fff; stroke-opacity: .75; stroke-width: 2; }
+.labo-contour { fill: none; stroke: var(--encre); stroke-opacity: .35; stroke-width: 1; }
+.labo-choix-cadre { fill: none; stroke: var(--accent); stroke-width: 3; rx: 3; }
+.labo-particule { fill: #fff; stroke: var(--chaleur-chaud); stroke-width: 1; }
+.labo-courbe { fill: none; stroke: var(--encre); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.labo-courbe-halo { fill: none; stroke: var(--surface); stroke-width: 6; stroke-opacity: .7; stroke-linejoin: round; }
 .labo-poignee { cursor: grab; }
-.labo-poignee rect { fill: var(--surface); stroke: var(--bord-fort); }
-.labo-poignee text { font: 650 11px var(--police); fill: var(--encre); }
-.labo-poignee .labo-ep { font-weight: 600; fill: var(--encre-2); }
-.labo-poignee:hover rect, .labo-poignee.choisie rect { stroke: var(--accent); }
-.labo-poignee.tenue rect { fill: var(--accent); }
+.labo-poignee rect { fill: var(--surface); stroke: var(--bord-fort); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .08)); }
+.labo-poignee text { font: 650 11.5px var(--police); fill: var(--encre); pointer-events: none; }
+.labo-poignee:hover rect, .labo-poignee.choisie rect { stroke: var(--accent); stroke-width: 1.5; }
+.labo-poignee.tenue rect { fill: var(--accent); stroke: var(--accent); }
 .labo-poignee.tenue text { fill: #fff; }
-.labo-grille { stroke: #000; stroke-opacity: .12; stroke-dasharray: 2 4; }
-.labo-grad { font: 600 10.5px var(--police); fill: var(--encre-2); }
-.labo-courbe { fill: none; stroke: var(--encre); stroke-width: 2.4; stroke-linejoin: round; }
-.labo-courbe-halo { fill: none; stroke: var(--surface); stroke-width: 5.5; stroke-opacity: .85; stroke-linejoin: round; }
-.labo-fleche { stroke: var(--encre); stroke-width: 3; }
+.labo-ep { font: 600 11px var(--police); fill: var(--encre-2); }
+.labo-t-grande { font: 800 34px var(--police); fill: var(--encre); letter-spacing: -.02em; }
+.labo-legende { font: 600 11.5px var(--police); fill: var(--encre-2); }
+.labo-soleil circle:last-child { fill: #f5b400; }
+.labo-soleil line { stroke: #f5b400; stroke-width: 3; stroke-linecap: round; }
+.labo-lune path { fill: #c9d3e6; }
+.labo-fleche { stroke: var(--encre); stroke-width: 6; stroke-linecap: round; }
 .labo-pointe { fill: var(--encre); }
-.labo-flux { font: 800 14px var(--police); fill: var(--encre); }
-.labo-etiquette rect { fill: var(--surface); opacity: .92; }
-.labo-etiquette text { font: 700 12px var(--police); fill: var(--encre); }
-.labo-insertion { stroke: var(--accent); stroke-width: 4; stroke-linecap: round; }
+.labo-fleche-g.nulle { opacity: .25; }
+.labo-flux { font: 800 15px var(--police); fill: var(--encre); }
+.labo-insertion { stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
 .labo-edition:empty { display: none; }
-.labo-outil { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-doux); }
+.labo-outil { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: var(--accent-doux); }
+.labo-outil-n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 800; font-size: .8rem; }
 .labo-outil select { width: auto; max-width: 240px; }
-.labo-ep-curseur { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; }
-.labo-ep-curseur input { accent-color: var(--accent); width: 160px; }
-.labo-ep-curseur output { min-width: 52px; font-variant-numeric: tabular-nums; }
-.labo-commandes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-.labo-commandes input[type="range"] { flex: 1 1 200px; accent-color: var(--accent); }
-.labo-jouer { min-width: 120px; }
-.labo-vitesse { width: auto; }
-.labo-vitesse button { padding: 6px 10px; }
-.labo-reglages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; align-items: start; padding: 12px 0; border-top: 1px solid var(--bord); }
-.labo-champs { display: flex; flex-wrap: wrap; gap: 10px; }
-.labo-champs .champ { flex: 0 1 150px; }
+.labo-ep-curseur { display: flex; align-items: center; gap: 8px; font-weight: 650; }
+.labo-ep-curseur input { accent-color: var(--accent); width: 150px; }
+.labo-ep-curseur output { min-width: 54px; font-variant-numeric: tabular-nums; }
+.labo-rond { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--bord-fort); background: var(--surface); font: inherit; font-weight: 700; color: var(--encre); cursor: pointer; }
+.labo-rond:hover { border-color: var(--accent); color: var(--accent); }
+.labo-rond.danger { color: var(--danger); }
+.labo-commandes { display: flex; gap: 10px; align-items: center; margin: 14px 0 6px; }
+.labo-commandes input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
+.labo-jouer { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; font-size: 1.15rem; cursor: pointer; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.labo-jouer:hover { background: var(--accent-fonce); }
+.labo-vitesse { flex: none; width: auto; }
+.labo-vitesse button { padding: 6px 10px; white-space: nowrap; }
+.labo-choix { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; margin: 10px 0 4px; }
+.labo-choix > .segments { flex: 1 1 260px; }
+.labo-choix .segments button { white-space: nowrap; }
+.labo-plus { flex-basis: 100%; }
+.labo-plus > summary { cursor: pointer; font-size: .85rem; font-weight: 650; color: var(--encre-2); width: fit-content; }
+.labo-champs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.labo-champs .champ { flex: 0 1 140px; }
 .labo-saisie { display: flex; align-items: center; gap: 6px; }
-.labo-saisie input { width: 80px; text-align: right; }
+.labo-saisie input { width: 76px; text-align: right; }
 .labo-saisie small { color: var(--encre-2); }
-.labo-bas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; border-top: 1px solid var(--bord); padding-top: 12px; }
+.labo-mesures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.labo-mesure { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; min-width: 0; }
+.labo-mesure b { font-size: 1.45rem; font-weight: 780; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.labo-mesure b small { font-size: .8rem; font-weight: 600; color: var(--encre-2); }
+.labo-mesure span { font-size: .76rem; color: var(--encre-2); }
+.labo-lecture { margin: 10px 0 0; font-size: .9rem; color: var(--encre-2); }
+.labo-courbes { margin-top: 10px; border-top: 1px solid var(--bord); padding-top: 8px; }
+.labo-courbes > summary { cursor: pointer; font-weight: 650; font-size: .9rem; }
 .labo-curseur { stroke: var(--accent); stroke-width: 2; }
-.labo-lecture { margin: 10px 0 0; }
-@media (max-width: 900px) {
-  .labo-reglages, .labo-bas { grid-template-columns: minmax(0, 1fr); }
-  .labo-reglages > .champ:nth-of-type(2) { order: 3; }
+@media (max-width: 760px) {
+  .labo-mesures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .labo-t-grande { font-size: 28px; }
+  .labo-horloge { top: 8px; padding: 3px 12px; }
 }
-.labo-vitesse button { white-space: nowrap; }
-@media (max-width: 640px) { .labo-etiquette text { font-size: 11px; } .labo-flux { font-size: 13px; } }
+@media (max-width: 760px) {
+  .labo-scene-boite { display: flex; flex-direction: column; }
+  .labo-horloge { order: -1; position: static; transform: none; margin: 8px auto 0; box-shadow: none; }
+}

@@ -5,6 +5,8 @@
 > La température avance dans le mur, le flux entre dans la pièce, minute par minute.
 
 Où le voir : onglet **Atelier parois** › « Le labo », en haut de la page.
+On **glisse** un matériau de la palette directement dans le mur (ou on clique : il se pose côté intérieur),
+on attrape le nom d'une couche pour la déplacer, on clique dessus pour changer son épaisseur.
 
 ---
 
@@ -12,7 +14,9 @@ Où le voir : onglet **Atelier parois** › « Le labo », en haut de la page.
 
 | À l'écran | Ce que c'est | Unité |
 |---|---|---|
-| Couleurs du mur (bleu → rouge) | La **température** de chaque tranche de 5 mm | °C |
+| Texture de chaque couche | Le **matériau** (béton moucheté, briques, isolant ondulé, bois), comme sur un plan | – |
+| Dégradé de couleur (bleu → rouge) | La **température** de chaque tranche de 5 mm, fondue en dégradé | °C |
+| Petites particules blanches | Le **flux local** : elles vont dans le sens de la chaleur, d'autant plus vite et plus visibles que q = G × ΔT entre deux tranches est fort | W/m² |
 | Courbe noire | Le profil θ(x) : air de la pièce → face intérieure → mur → face extérieure → air dehors | °C |
 | Pente de la courbe | Le **gradient** dθ/dx | K/m |
 | Flèche dans la pièce | Le **flux** de chaleur qui entre (q = −λ·dθ/dx à la surface) | W/m² |

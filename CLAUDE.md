@@ -116,6 +116,13 @@ préconisations, validation, découpage en 8 étapes).
    et la page reste vide (bug du 07/11/2026).
 4. Si un exemple de Méthode change : mettre à jour **en même temps** la Méthode, le test, la fiche et ce fichier.
 
+## Sessions et contexte (expliqué à Émile le 07/11/2026)
+
+- Une conversation a une mémoire limitée (le « contexte ») ; quand elle se remplit, elle est résumée automatiquement.
+  **Rien n'est perdu** : tout ce qui compte est dans le dépôt (code, ce fichier, `docs/etape-*.md`).
+- Bonne pratique : **une nouvelle conversation par étape** (ou par gros chantier). Elle relit ce fichier au démarrage.
+  En fin d'étape, toujours mettre à jour le tableau « État » ci-dessous et la fiche de l'étape.
+
 ## Comment travailler avec Émile
 
 - Il dicte souvent à la voix : fautes et mots coupés, à interpréter sans le faire remarquer.
@@ -141,5 +148,5 @@ préconisations, validation, découpage en 8 étapes).
 | 0. Plan | Fait (`docs/etape-0.md`). |
 | 1. Parois | **Fait, en attente de l'accord d'Émile.** 23 matériaux et 13 parois d'exemple, U, masse, δ, matrices ISO 13786 → \|Y12\|, f, Δt, Y11, κ1, κ2, coupe SVG avec l'onde, journée chaude (2 graphiques), « Retourner la paroi », parois enregistrées et comparées, inertie du local (Cm, Am, classe ISO 13790 (H)), Méthode-cours en 15 sections, 5 exercices, 26 mots de lexique. Validé par différences finies. |
 | 1 bis. Maison 3D | **Fait, en attente de l'accord d'Émile** (il a reporté les 3 questions de l'étape 1). Refonte visuelle, onglet Projet (saisie 6 étapes, maquette 3D faite main, rose des fenêtres, H par poste, inertie de la maison, détail des calculs), 2 exercices, 2 mots de lexique, Méthode § 14 à 18. Fiche `docs/etape-1bis.md`. |
-| 1 ter. Labo animé | **Fait, en attente de l'accord d'Émile** (demande du 07/11/2026 : « voir la température avancer dans le mur, puis dans la pièce »). Labo dans l'atelier : palette de couches, glisser-déposer, mur en coupe coloré par la température + courbe θ(x) + flèche de flux, horloge, coup de chaud / journées d'été, pièce climatisée / libre, graphique avec curseur, contrôle d'énergie. Méthode § 19, 1 exercice, 2 mots de lexique. Fiche `docs/etape-1ter.md`. |
+| 1 ter. Labo animé | **Fait, en attente de l'accord d'Émile** (demande du 07/11/2026 : « voir la température avancer dans le mur, puis dans la pièce »). Labo dans l'atelier (refait plus visuel le 07/11 : textures de matériaux, dégradé thermique, particules de flux, soleil / lune, horloge dans l'image, matériaux à glisser dans le mur, réglages repliés) : palette de couches, glisser-déposer, mur en coupe coloré par la température + courbe θ(x) + flèche de flux, horloge, coup de chaud / journées d'été, pièce climatisée / libre, graphique avec curseur, contrôle d'énergie. Méthode § 19, 1 exercice, 2 mots de lexique. Fiche `docs/etape-1ter.md`. |
 | 2 à 7 | À faire, dans l'ordre du cahier des charges. Choix météo (étape 0) : PVGIS, 7 villes, 1er mai → 30 sept., canicule 2019 / 2022 si disponible, licence à vérifier (H). |

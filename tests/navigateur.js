@@ -99,6 +99,7 @@ async function nouvellePage(navigateur, options) {
   ok(await nbCouches() === avantAjout, 'Labo : « Retirer » enlève la couche');
   // Glisser l'isolant (couche 3) tout à gauche : on passe de l'ITE à l'ITI.
   const k1 = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  await page.$eval('#labo-scene', function (el) { el.scrollIntoView({ block: 'center' }); });
   const poignee = await page.$('#labo-scene [data-couche="2"] rect');
   const bp = await poignee.boundingBox();
   const sceneBox = await (await page.$('#labo-scene svg')).boundingBox();

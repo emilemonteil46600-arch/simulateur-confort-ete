@@ -6,6 +6,8 @@
 
      Chapitre 1  calcul-parois.js       Les parois : U, masse, déphasage,
                                         amortissement, admittance, κ, inertie du local
+     Chapitre 1 bis calcul-batiment.js  La maison : orientation, surfaces, volume,
+                                        déperditions H = Σ U·A, inertie de la maison
      Chapitre 2  calcul-soleil.js       (étape 2) météo, soleil sur les façades, apports
      Chapitre 3  calcul-5r1c.js         (étape 3) le modèle horaire 5R1C
      Chapitre 4  calcul-indicateurs.js  (étape 4) heures, DH, adaptatif, PMV/PPD, score
@@ -20,8 +22,12 @@
   const parois = global.ConfortParois ||
     (typeof require === 'function' ? require('./calcul-parois.js') : null);
 
+  const batiment = global.ConfortBatiment ||
+    (typeof require === 'function' ? require('./calcul-batiment.js') : null);
+
   const ConfortCalcul = {
-    parois: parois
+    parois: parois,
+    batiment: batiment
   };
 
   global.ConfortCalcul = ConfortCalcul;

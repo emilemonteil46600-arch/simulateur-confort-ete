@@ -10,7 +10,7 @@ const espaces = function (t) { return t.replace(/\s/g, ' '); };
 
 test('Les clés de sauvegarde n\'ont pas été renommées (sinon Émile perd ses données)', function () {
   assert.deepEqual(Object.keys(BAO.CLES_DONNEES).sort(), [
-    'bao.confort.local.v1', 'bao.confort.materiaux.v1', 'bao.confort.paroi.v1', 'bao.confort.parois.v1', 'bao.confort.reglages.v1'
+    'bao.confort.local.v1', 'bao.confort.materiaux.v1', 'bao.confort.paroi.v1', 'bao.confort.parois.v1', 'bao.confort.projet.v1', 'bao.confort.reglages.v1'
   ]);
 });
 

@@ -8,6 +8,7 @@
   'use strict';
 
   const P = global.ConfortParois || (typeof require === 'function' ? require('../calcul/calcul-parois.js') : null);
+  const B = global.ConfortBatiment || (typeof require === 'function' ? require('../calcul/calcul-batiment.js') : null);
   const BAO = global.BAO;
   const nb = BAO.nombre;
   const choisir = function (h, liste) { return liste[Math.floor(h() * liste.length)]; };
@@ -101,6 +102,34 @@
           enonce: 'Un mur homogène très épais : δ = <b>' + nb(delta * 100) + ' cm</b>. Avec l\'approximation « milieu semi-infini », quel retard prend l\'onde après <b>' + nb(e * 100) + ' cm</b> ?',
           correction: 'Retard ≈ (e / δ) × T / (2π) = (' + nb(e, 2) + ' / ' + nb(delta, 2) + ') × 3,82 h\n       = ' + nb(e / delta, 3) + ' × 3,82 = ' + nb(reponse, 1) + ' h\n' +
             'Et l\'amplitude restante ≈ e^(−' + nb(e / delta, 2) + ') = ' + nb(f, 3) + '.\n(Le calcul matriciel de l\'outil est exact ; cette règle donne l\'ordre de grandeur.)'
+        };
+      }
+    },
+    {
+      titre: 'Surface des rampants (combles aménagés)',
+      generer: function (h) {
+        const L = BAO.tirer(h, 8, 16, 1), l = BAO.tirer(h, 6, 10, 1), pente = BAO.tirer(h, 20, 45, 5);
+        const g = { longueur: L, largeur: l, toit: 'deux-pans', pente: pente, combles: 'amenages', niveaux: 1, hauteurEtage: 2.7 };
+        const reponse = B.surfaceToiture(g);
+        return {
+          type: 'nombre', unite: 'm²', tolerance: Math.max(0.5, reponse * 0.01), reponse: reponse,
+          enonce: 'Maison de <b>' + nb(L) + ' × ' + nb(l) + ' m</b>, toit 2 pans à <b>' + nb(pente) + '°</b>, combles aménagés. Quelle surface de rampants faut-il isoler ?',
+          correction: 'Surface d\'un pan incliné = surface au sol / cos α\n= ' + nb(L) + ' × ' + nb(l) + ' / cos ' + nb(pente) + '° = ' + nb(L * l) + ' / ' + nb(Math.cos(pente * Math.PI / 180), 3) + ' = ' + nb(reponse, 1) + ' m²'
+        };
+      }
+    },
+    {
+      titre: 'Déperditions H = Σ U·A',
+      generer: function (h) {
+        const Am = BAO.tirer(h, 60, 140, 5), Um = BAO.tirer(h, 0.2, 0.6, 0.05);
+        const Af = BAO.tirer(h, 8, 30, 1), Uw = choisir(h, [1.4, 2.9, 4.8]);
+        const At = BAO.tirer(h, 60, 120, 5), Ut = BAO.tirer(h, 0.1, 0.4, 0.05);
+        const reponse = Um * Am + Uw * Af + Ut * At;
+        return {
+          type: 'nombre', unite: 'W/K', tolerance: Math.max(0.5, reponse * 0.01), reponse: reponse,
+          enonce: 'Murs <b>' + nb(Am) + ' m²</b> (U = ' + nb(Um, 2) + '), fenêtres <b>' + nb(Af) + ' m²</b> (Uw = ' + nb(Uw, 1) + '), toiture <b>' + nb(At) + ' m²</b> (U = ' + nb(Ut, 2) + '). Quel est H, sans le plancher bas ?',
+          correction: 'H = Σ U × A = ' + nb(Um, 2) + ' × ' + nb(Am) + ' + ' + nb(Uw, 1) + ' × ' + nb(Af) + ' + ' + nb(Ut, 2) + ' × ' + nb(At) + '\n  = ' +
+            nb(Um * Am, 1) + ' + ' + nb(Uw * Af, 1) + ' + ' + nb(Ut * At, 1) + ' = ' + nb(reponse, 1) + ' W/K'
         };
       }
     },

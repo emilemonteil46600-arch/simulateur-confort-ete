@@ -47,11 +47,15 @@ préconisations, validation, découpage en 8 étapes).
   calcul/                     LE COURS, en chapitres, fonctions pures commentées en français, module.exports pour Node :
     calcul.js                 le sommaire (ConfortCalcul)
     calcul-parois.js          ch. 1 : U, masse, δ, matrices ISO 13786, κ, inertie du local (fait)
+    calcul-batiment.js        ch. 1 bis : la maison — orientation, surfaces, volume, H = Σ U·A, inertie (fait)
     calcul-soleil.js          ch. 2 : météo, soleil, apports (étape 2)
     calcul-5r1c.js            ch. 3 : modèle horaire (étape 3) …
-  affichage/                  interface.js (AUCUN calcul), schemas.js et graphiques.js (SVG, AUCUN calcul),
-                              exercices.js (Teste-toi ; la bonne réponse vient TOUJOURS de calcul/)
-  donnees/                    données PUBLIQUES d'exemple (confort-materiaux.js, lexique.js, météo à venir)
+  affichage/                  projet.js (onglet Projet : saisie simple + résultat, AUCUN calcul),
+                              maison3d.js (maquette 3D SVG faite main : projection orthogonale, faces visibles n·c > 0),
+                              interface.js (onglet Atelier parois, AUCUN calcul), schemas.js et graphiques.js (SVG),
+                              exercices.js (Teste-toi ; la bonne réponse vient TOUJOURS de calcul/), site.css (style du site)
+  donnees/                    données PUBLIQUES d'exemple (confort-materiaux.js, confort-projet.js : maison d'exemple,
+                              usages, fenêtres Uw/g, protections ; lexique.js ; météo à venir)
   docs/                       cahier des charges et fiches d'étape
   tests/*.test.js             node --test ; tests/navigateur.js (Playwright, à la main)
   ```
@@ -67,8 +71,9 @@ préconisations, validation, découpage en 8 étapes).
 - Les données d'Émile vivent dans le `localStorage`. Le site est sur la même origine que la boîte à outils
   (emilemonteil46600-arch.github.io) : les deux sites **partagent le même stockage** (utile à l'étape 5 pour lire
   les ratios du chiffrage `bao.chiffrage.biblio.v1`), d'où le préfixe `bao.confort.*`.
-- Clés (ne **jamais** les renommer sans migration) : `bao.confort.paroi.v1`, `bao.confort.parois.v1`,
-  `bao.confort.local.v1`, `bao.confort.materiaux.v1`, `bao.confort.reglages.v1` ; `bao.confort.onglet` (affichage).
+- Clés (ne **jamais** les renommer sans migration) : `bao.confort.projet.v1` (la maison), `bao.confort.paroi.v1`, `bao.confort.parois.v1`,
+  `bao.confort.local.v1`, `bao.confort.materiaux.v1`, `bao.confort.reglages.v1` (onde + types de fenêtres ; l'atelier et
+  le projet y écrivent chacun leur partie : toujours relire avant d'écrire) ; `bao.confort.onglet` (affichage).
   Toute nouvelle clé de données va dans `BAO.CLES_DONNEES` (vérifié par `tests/commun.test.js`).
 - Sauvegarde complète et restauration : onglet Données › « Mes données ».
 
@@ -80,6 +85,10 @@ préconisations, validation, découpage en 8 étapes).
    - béton 20 + laine 12 : ITE κ1 85 / ITI 14 kJ/(m²·K), même U ≈ 0,27 ;
    - matrices de transfert = différences finies à moins de 0,5 % (en pratique < 0,1 %) ;
    - local d'exemple 20 m² → Cm = 4,11 MJ/K, Am = 54,7 m², 205,7 kJ/(m²·K) → classe « Moyenne » ;
+   - maison d'exemple 10 × 8, plain-pied, 2 pans 35°, combles perdus, A au Sud : h = 2,80 m, murs opaques 84,2 m²,
+     fenêtres 13 m² (16 %), H = 25,48 + 18,20 + 9,06 + 26,38 = **79,1 W/K**, Cm = **9 314 kJ/K** → 116 kJ/(m²·K) « Légère » ;
+     combles aménagés → rampants 80 / cos 35° = 97,7 m² ;
+   - maquette 3D : caméra orthonormée et directe (r × h = c), Est à droite vu depuis le Sud (pas de miroir) ;
    - Teste-toi : 40 tirages par exercice.
 2. `node tests/navigateur.js` : aucune erreur console, 390 px clair / sombre, exemples à l'écran, sauvegarde / restauration.
 3. Si un exemple de Méthode change : mettre à jour **en même temps** la Méthode, le test, la fiche et ce fichier.
@@ -90,10 +99,21 @@ préconisations, validation, découpage en 8 étapes).
 - Réponses courtes, directes, visuelles (tableaux). Toutes les questions dans un seul message, avec des options.
 - Lui expliquer le **pourquoi** des formules.
 
-## État au 06/11/2026
+## Interface (décisions d'Émile du 07/11/2026)
+
+- Il trouvait la première version « moche » : il veut du **visuel**. Style « logiciel pro » clair : onglet **Projet** =
+  saisie en 6 étapes à gauche, **maison en 3D** au centre (tourne à la souris, clic sur une façade / le toit),
+  résultat à droite. L'atelier parois = onglet **expert**. Toujours garder le détail des calculs accessible.
+- **Note de confort** (étape 4) : chaque indicateur (Givoni, DH, heures > 28 °C, adaptatif, PMV/PPD, nuits chaudes…)
+  noté **sur 10** par un barème **continu** (droite entre bornes), × un **coefficient**, moyenne pondérée → note /10.
+  Barèmes et coefficients fixés AVEC Émile, modifiables dans Données, note toujours affichée avec son détail.
+- Ordre : 1 bis (maison 3D) → 2 (météo + soleil sur la maquette) → 3 (5R1C) → 4 (indicateurs + note) → 5…7.
+
+## État au 07/11/2026
 
 | Étape | État |
 |---|---|
 | 0. Plan | Fait (`docs/etape-0.md`). |
 | 1. Parois | **Fait, en attente de l'accord d'Émile.** 23 matériaux et 13 parois d'exemple, U, masse, δ, matrices ISO 13786 → \|Y12\|, f, Δt, Y11, κ1, κ2, coupe SVG avec l'onde, journée chaude (2 graphiques), « Retourner la paroi », parois enregistrées et comparées, inertie du local (Cm, Am, classe ISO 13790 (H)), Méthode-cours en 15 sections, 5 exercices, 26 mots de lexique. Validé par différences finies. |
+| 1 bis. Maison 3D | **Fait, en attente de l'accord d'Émile** (il a reporté les 3 questions de l'étape 1). Refonte visuelle, onglet Projet (saisie 6 étapes, maquette 3D faite main, rose des fenêtres, H par poste, inertie de la maison, détail des calculs), 2 exercices, 2 mots de lexique, Méthode § 14 à 18. Fiche `docs/etape-1bis.md`. |
 | 2 à 7 | À faire, dans l'ordre du cahier des charges. Choix météo (étape 0) : PVGIS, 7 villes, 1er mai → 30 sept., canicule 2019 / 2022 si disponible, licence à vérifier (H). |

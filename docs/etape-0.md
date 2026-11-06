@@ -32,4 +32,5 @@
 | BESTEST | Plages de résultats publiées dans des rapports publics (H), faute d'accès à ASHRAE 140. |
 | Score, données Pléiades | À décider aux étapes 4 et 7. |
 | Site | **Un site à part** (choix d'Émile du 06/11/2026) : projet `simulateur-confort-ete`, même style que la boîte à outils, code commun copié. La boîte à outils garde une carte qui pointe vers lui. |
+| Visuel (07/11/2026) | Première version jugée trop austère. **Étape 1 bis** ajoutée : maison en 3D faite main, style « logiciel pro » clair, atelier parois en mode expert. Note de confort : indicateurs notés sur 10 par barème continu × coefficients (étape 4). Voir `etape-1bis.md`. |
 | Relecture | Émile fait relire chaque étape par un autre modèle (Gemini) ; Claude revérifie à chaque étape. |

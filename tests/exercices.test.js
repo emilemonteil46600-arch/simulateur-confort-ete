@@ -7,6 +7,7 @@ const { charger } = require('./aide-tests.js');
 
 const BAO = charger('commun/commun.js');
 charger('calcul/calcul-parois.js');
+charger('calcul/calcul-batiment.js');
 const OUTILS = {
   'simulateur de confort d\'été': charger('affichage/exercices.js')
 };

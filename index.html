@@ -4,87 +4,114 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Simulateur de confort d'été</title>
-  <meta name="description" content="Simulateur de confort d'été, étape 1 : parois couche par couche, U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786) et inertie du local (NF EN ISO 13790).">
+  <meta name="description" content="Simulateur de confort d'été transparent : maison en 3D, parois couche par couche (NF EN ISO 13786), déperditions, inertie, et bientôt une note de confort multicritère (Givoni, degrés-heures, confort adaptatif).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="commun/style.css">
-  <style>
-    /* Styles propres à cet outil */
-    :root { --gr-1: #c4501b; --gr-2: #1f6fb8; }
-    @media (prefers-color-scheme: dark) { :root { --gr-1: #e0682f; --gr-2: #3f8ee0; } }
-
-    .etape { display: inline-block; font-size: .78rem; font-weight: 650; color: var(--froid); background: var(--froid-doux); border-radius: 99px; padding: 2px 10px; margin-bottom: 8px; }
-    .indicateurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 4px; }
-    .indicateur { background: var(--surface-2); border: 1px solid var(--bord); border-radius: 8px; padding: 8px 10px; min-width: 0; }
-    .indicateur .nom { font-size: .76rem; color: var(--encre-2); }
-    .indicateur .val { font-size: 1.25rem; font-weight: 720; font-variant-numeric: tabular-nums; line-height: 1.2; }
-    .indicateur .val small { font-size: .74rem; font-weight: 600; color: var(--encre-2); }
-    .indicateur .dit { font-size: .74rem; color: var(--encre-3); }
-    .table-couches select { min-width: 190px; }
-    .table-couches input { width: 70px; text-align: right; }
-    .table-couches td.num { white-space: nowrap; }
-    .boutons-ligne { display: flex; gap: 2px; justify-content: flex-end; }
-    .boutons-ligne .bouton { padding: 2px 7px; }
-    .schema-paroi { max-width: 560px; }
-    .schema-svg .sch-interieur { fill: var(--surface-2); }
-    .schema-svg .sch-couche { stroke: var(--encre-3); stroke-width: .6; }
-    .schema-svg .sch-onde { fill: none; stroke: var(--gr-1); stroke-width: 2.2; stroke-linejoin: round; }
-    .grille-graphes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-    @media (max-width: 900px) { .grille-graphes { grid-template-columns: minmax(0, 1fr); } }
-    .graphique-boite { position: relative; }
-    .graphique { display: block; width: 100%; height: auto; touch-action: pan-y; }
-    .graphique .gr-grille { stroke: var(--bord); stroke-width: 1; }
-    .graphique .gr-zero { stroke: var(--encre-3); stroke-width: 1; }
-    .graphique .gr-repere { stroke: var(--encre-3); stroke-width: 1; stroke-dasharray: 2 3; }
-    .graphique .gr-texte { fill: var(--encre-2); font-size: 11px; font-family: var(--police); }
-    .graphique .gr-ligne { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-    .graphique .gr-ligne.gr-1 { stroke: var(--gr-1); }
-    .graphique .gr-ligne.gr-2 { stroke: var(--gr-2); }
-    .graphique .gr-ligne.gr-ref { stroke: var(--encre-3); stroke-dasharray: 5 4; }
-    .graphique .gr-reticule { stroke: var(--encre-3); stroke-width: 1; }
-    .graphique .gr-point { stroke: var(--surface); stroke-width: 2; }
-    .graphique .gr-point.gr-1 { fill: var(--gr-1); }
-    .graphique .gr-point.gr-2 { fill: var(--gr-2); }
-    .graphique .gr-point.gr-ref { fill: var(--encre-3); }
-    .gr-cle { display: inline-block; width: 16px; height: 0; border-top: 2px solid; margin-right: 6px; vertical-align: middle; border-radius: 0 !important; }
-    .gr-cle.gr-1 { border-color: var(--gr-1); }
-    .gr-cle.gr-2 { border-color: var(--gr-2); }
-    .gr-cle.gr-ref { border-top-style: dashed; border-color: var(--encre-3); }
-    .legende .gr-cle { width: 16px; height: 0; border-left: 0; border-right: 0; border-bottom: 0; }
-    .gr-bulle { position: absolute; top: 4px; background: var(--surface); border: 1px solid var(--bord-fort); border-radius: 8px; padding: 6px 9px; font-size: .78rem; box-shadow: var(--ombre); pointer-events: none; white-space: nowrap; }
-    .gr-bulle[hidden] { display: none; }
-    .methode .tableau-dim { font-size: .85rem; }
-    /* Les symboles (λ, ρ, κ, δ, ξ) ne doivent pas passer en majuscules : ρ deviendrait « P ». */
-    .table-couches th, #detail-couches th, #comparaison th, .tableau-dim th, #corps-local th, .table-edition th { text-transform: none; }
-    .graphique .gr-texte { font-size: 12px; }
-    .methode figure { margin: 10px 0; }
-  </style>
+  <link rel="stylesheet" href="affichage/site.css">
 </head>
-<body>
+<body class="appli">
 
 <header class="entete">
   <div class="entete-interieur">
     <a class="logo" href="./" title="Simulateur de confort d'été">
-      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="16" cy="16" r="5" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M16 5v3M16 24v3M5 16h3M24 16h3M8.2 8.2l2.1 2.1M21.7 21.7l2.1 2.1M8.2 23.8l2.1-2.1M21.7 10.3l2.1-2.1" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
-      <span>Simulateur de confort d'été</span>
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><circle cx="16" cy="16" r="5" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M16 5v3M16 24v3M5 16h3M24 16h3M8.2 8.2l2.1 2.1M21.7 21.7l2.1 2.1M8.2 23.8l2.1-2.1M21.7 10.3l2.1-2.1" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span class="logo-texte"><b>Confort d'été</b><small>simulateur transparent</small></span>
     </a>
-    <a class="fil" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils d'Émile">Boîte à outils ↗</a>
-    <span class="version">Étape 1 · nov. 2026</span>
+    <nav class="onglets" role="tablist" aria-label="Sections de l'outil">
+      <button data-onglet="calcul">Projet</button>
+      <button data-onglet="atelier">Atelier parois <span class="puce-expert">expert</span></button>
+      <button data-onglet="methode">Méthode</button>
+      <button data-onglet="donnees">Données</button>
+    </nav>
+    <a class="lien-bao" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils">Boîte à outils ↗</a>
+    <span class="version">Étape 1 bis · nov. 2026</span>
   </div>
 </header>
 
 <main class="page">
-  <h1>Simulateur de confort d'été</h1>
-  <span class="etape">Étape 1 sur 7 : les parois</span>
-  <p class="intro">Pourquoi un mur « retarde » la chaleur, et pourquoi la <b>position de l'isolant</b> change tout l'été alors que U ne bouge pas. Décris une paroi couche par couche : l'outil calcule U, la masse, le <b>déphasage</b>, l'<b>amortissement</b>, l'<b>admittance</b>, la <b>capacité κ</b> (NF EN ISO 13786) et la <b>classe d'inertie</b> du local (NF EN ISO 13790).</p>
-
-  <nav class="onglets" role="tablist" aria-label="Sections de l'outil">
-    <button data-onglet="calcul">Calcul</button>
-    <button data-onglet="methode">Méthode</button>
-    <button data-onglet="donnees">Données</button>
-  </nav>
-
-  <!-- ===================== ONGLET CALCUL ===================== -->
+  <!-- ===================== ONGLET PROJET (la maison) ===================== -->
   <section class="panneau" id="onglet-calcul" role="tabpanel">
+    <div class="studio">
+      <!-- ----- Saisie ----- -->
+      <div class="studio-saisie" id="saisie">
+        <details class="pas" open data-pas="projet">
+          <summary><span class="pas-n">1</span><span class="pas-titre">Le projet</span><span class="pas-resume" data-resume="projet"></span></summary>
+          <div class="pas-corps">
+            <div class="champ"><label for="projet-nom">Nom</label><input type="text" id="projet-nom" autocomplete="off"></div>
+            <div class="champ"><label for="projet-usage">Usage</label><select id="projet-usage"></select></div>
+          </div>
+        </details>
+
+        <details class="pas" open data-pas="volume">
+          <summary><span class="pas-n">2</span><span class="pas-titre">Le volume</span><span class="pas-resume" data-resume="volume"></span></summary>
+          <div class="pas-corps">
+            <div class="curseur"><label for="g-longueur">Longueur (façades A et C)</label><input type="range" id="g-longueur" min="4" max="40" step="0.5" data-geo="longueur"><output data-sortie="longueur"></output></div>
+            <div class="curseur"><label for="g-largeur">Largeur (façades B et D)</label><input type="range" id="g-largeur" min="4" max="30" step="0.5" data-geo="largeur"><output data-sortie="largeur"></output></div>
+            <div class="champ"><span class="etiquette">Niveaux</span><div class="segments" id="g-niveaux" role="group" aria-label="Nombre de niveaux"></div></div>
+            <div class="curseur"><label for="g-hauteur">Hauteur d'étage</label><input type="range" id="g-hauteur" min="2.3" max="4.5" step="0.05" data-geo="hauteurEtage"><output data-sortie="hauteurEtage"></output></div>
+          </div>
+        </details>
+
+        <details class="pas" data-pas="toiture">
+          <summary><span class="pas-n">3</span><span class="pas-titre">La toiture</span><span class="pas-resume" data-resume="toiture"></span></summary>
+          <div class="pas-corps">
+            <div class="champ"><span class="etiquette">Forme</span><div class="segments segments-icones" id="g-toit" role="group" aria-label="Forme du toit"></div></div>
+            <div class="curseur" id="bloc-pente"><label for="g-pente">Pente</label><input type="range" id="g-pente" min="5" max="60" step="1" data-geo="pente"><output data-sortie="pente"></output></div>
+            <div class="champ" id="bloc-combles"><span class="etiquette">Combles</span><div class="segments" id="g-combles" role="group" aria-label="Combles"></div></div>
+            <div class="champ"><label for="p-toiture">Composition (isolation)</label><select id="p-toiture" data-paroi="toiture"></select></div>
+          </div>
+        </details>
+
+        <details class="pas" data-pas="orientation">
+          <summary><span class="pas-n">4</span><span class="pas-titre">L'orientation</span><span class="pas-resume" data-resume="orientation"></span></summary>
+          <div class="pas-corps">
+            <p class="aide" style="margin:0 0 6px">Vers où regarde la <b>façade A</b> ? Les autres suivent à 90°.</p>
+            <div class="boussole" id="boussole"></div>
+            <div class="curseur"><label for="g-orientation">Réglage fin (azimut, depuis le Nord)</label><input type="range" id="g-orientation" min="0" max="355" step="5" data-geo="orientation"><output data-sortie="orientation"></output></div>
+          </div>
+        </details>
+
+        <details class="pas" data-pas="fenetres">
+          <summary><span class="pas-n">5</span><span class="pas-titre">Les fenêtres</span><span class="pas-resume" data-resume="fenetres"></span></summary>
+          <div class="pas-corps">
+            <div class="champ"><label for="vitrage-type">Type de fenêtre</label><select id="vitrage-type"></select></div>
+            <div class="facades" id="facades"></div>
+            <p class="aide" style="margin:6px 0 0">Surface en m² de vitrage par façade. L'effet des protections sera calculé à l'étape 2 (soleil).</p>
+          </div>
+        </details>
+
+        <details class="pas" data-pas="parois">
+          <summary><span class="pas-n">6</span><span class="pas-titre">Murs et planchers</span><span class="pas-resume" data-resume="parois"></span></summary>
+          <div class="pas-corps">
+            <div class="champ"><label for="p-murs">Murs extérieurs</label><select id="p-murs" data-paroi="murs"></select></div>
+            <div class="champ"><label for="p-plancherBas">Plancher bas</label><select id="p-plancherBas" data-paroi="plancherBas"></select></div>
+            <div class="champ" id="bloc-plancherInter"><label for="p-plancherInter">Planchers entre niveaux</label><select id="p-plancherInter" data-paroi="plancherInter"></select></div>
+            <div class="champ"><label for="p-cloisons">Cloisons</label><select id="p-cloisons" data-paroi="cloisons"></select></div>
+            <div class="curseur"><label for="g-cloisons">Cloisons (m² par m² de plancher) (H)</label><input type="range" id="g-cloisons" min="0" max="2" step="0.1"><output data-sortie="cloisons"></output></div>
+            <p class="aide" style="margin:6px 0 0">Pour détailler une composition couche par couche : onglet <b>Atelier parois</b>. Tes parois enregistrées apparaissent ici.</p>
+          </div>
+        </details>
+
+        <div class="barre-boutons pas-impression" style="margin-top:10px">
+          <button type="button" class="bouton discret" id="btn-projet-exemple">Revenir à la maison d'exemple</button>
+        </div>
+      </div>
+
+      <!-- ----- Maquette 3D ----- -->
+      <div class="studio-3d">
+        <div class="carte carte-3d" id="maison3d"></div>
+        <div class="tuiles tuiles-3d" id="chiffres-maison"></div>
+      </div>
+
+      <!-- ----- Résultat ----- -->
+      <div class="studio-resultat" id="resultat-projet" aria-live="polite"></div>
+    </div>
+  </section>
+
+
+  <!-- ===================== ONGLET ATELIER PAROIS (mode expert) ===================== -->
+  <section class="panneau" id="onglet-atelier" role="tabpanel" hidden>
+    <div class="bandeau-expert"><b>Atelier parois · mode expert.</b> Décris une paroi couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), puis l'inertie d'un local (NF EN ISO 13790). Les parois que tu enregistres ici apparaissent dans les listes du projet.</div>
     <div class="grille-2">
       <div>
         <div class="carte">
@@ -204,6 +231,7 @@
   <!-- ===================== ONGLET MÉTHODE ===================== -->
   <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
     <div class="carte methode">
+      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D.</p>
       <h2>1. Ce qu'on cherche</h2>
       <p>L'hiver, on veut savoir <b>combien</b> de chaleur s'en va : c'est U, un calcul en <b>régime permanent</b> (on suppose que les températures ne bougent pas). L'été, la question change : dehors, la température <b>monte et descend chaque jour</b> et le soleil chauffe les façades. Une paroi lourde ne laisse pas passer cette onde tout de suite : elle en <b>stocke</b> une partie, la <b>retarde</b> et l'<b>écrase</b>. Deux murs de même U peuvent donc donner des pièces très différentes l'été.</p>
       <p>Cette étape calcule, pour une paroi décrite couche par couche :</p>
@@ -387,19 +415,86 @@ Am = Cm² / Σ (κj² × Aj)        [m²]</div>
         <li><b>(H)</b> Plancher sur terre-plein : le sol n'est pas modélisé (NF EN ISO 13370, prévu plus tard).</li>
       </ul>
 
-      <h2>14. Teste-toi</h2>
+      <h2>14. La maison : volume, façades, orientation</h2>
+      <p>La maison est un <b>volume rectangulaire</b> de longueur L (façades A et C) et de largeur l (façades B et D), avec n niveaux de hauteur d'étage he. On la décrit avec les mêmes conventions qu'une STD : chaque façade a une surface brute, une surface vitrée et une orientation.</p>
+      <div class="formule">Hauteur des murs        Hm = n × he
+Façades A et C          L × Hm         Façades B et D    l × Hm
+Surface au sol          L × l          Plancher Af = L × l × n   (H : dimensions extérieures)
+Partie opaque           A opaque = A brute − A vitrée</div>
+      <p><b>L'orientation.</b> On donne l'<b>azimut</b> de la façade A : l'angle entre le Nord et la direction vers laquelle elle « regarde », compté dans le sens des aiguilles d'une montre (N = 0°, E = 90°, S = 180°, O = 270°). Les façades B, C et D suivent à +90°, +180° et +270°. C'est l'azimut qui dira, à l'étape 2, combien de soleil reçoit chaque façade.</p>
+      <p><b>La toiture.</b> Pour une pente α, le faîtage monte de h = (côté court / 2) × tan α. Pour un toit à 2 pans, le faîtage suit la longueur et les pignons triangulaires (l × h / 2) sont sur les façades B et D.</p>
+      <div class="formule">Surface d'un pan incliné = surface au sol / cos α</div>
+      <p>Pourquoi ? Un pan incliné, vu de dessus, garde sa longueur le long de l'égout mais sa largeur « en pente » est plus grande que sa projection : elle vaut largeur au sol / cos α (trigonométrie du triangle rectangle). Comme tous les pans ont la même pente, la surface totale des rampants vaut L × l / cos α, pour un toit à 2 ou 4 pans.</p>
+      <ul>
+        <li><b>Combles perdus</b> : l'isolant est posé sur le plafond. La paroi « toiture » de l'enveloppe est le plafond, de surface L × l. Les combles et les pignons sont hors de l'enveloppe chauffée.</li>
+        <li><b>Combles aménagés</b> : l'isolant suit les rampants (L × l / cos α), et les pignons font partie des murs. Le volume chauffé gagne les combles : L × l × h / 2 pour 2 pans, h × s × (3·Lg − s) / 6 pour 4 pans (Lg grand côté, s petit côté).</li>
+      </ul>
+
+      <h2>15. Les déperditions par transmission : H = Σ U·A</h2>
+      <p>Chaque paroi laisse passer U watts par m² et par degré d'écart. En multipliant par sa surface, on obtient ce qu'elle laisse passer pour 1 °C d'écart entre dedans et dehors. En additionnant toutes les parois, on obtient le <b>coefficient de déperdition par transmission</b> H :</p>
+      <div class="formule">H = U murs × A murs opaques + Uw × A fenêtres + U toiture × A toiture + U plancher bas × A plancher
+[W/(m²·K)] × [m²] = W/K</div>
+      <ul>
+        <li>H dit « combien de watts traversent l'enveloppe pour 1 °C d'écart ». À 10 °C d'écart, une maison à H = 80 W/K perd 800 W.</li>
+        <li><b>L'été</b>, ce même H laisse <b>entrer</b> la chaleur quand il fait plus chaud dehors que dedans. Mais ce n'est qu'une partie de l'histoire : le soleil à travers les fenêtres et les apports internes pèsent souvent davantage (étapes 2 et 3).</li>
+        <li>On compare facilement les postes : une fenêtre (Uw ≈ 1,4) laisse passer environ 5 fois plus qu'un mur isolé (U ≈ 0,3) pour la même surface.</li>
+      </ul>
+      <p>(H) Pas encore de ponts thermiques ni de renouvellement d'air. (H) Le plancher bas est calculé comme une paroi donnant sur l'extérieur : l'effet du sol (NF EN ISO 13370), qui amortit beaucoup, n'est pas modélisé.</p>
+
+      <h2>16. L'inertie de toute la maison</h2>
+      <p>On reprend la méthode de la section 11, mais pour toute la maison, vue comme une seule zone : on additionne κ × A de toutes les faces que touche l'air intérieur.</p>
+      <div class="formule">Cm = κ1 murs × A murs opaques + κ1 toiture × A toiture + κ1 plancher bas × A plancher
+   + (κ face 1 + κ face 2) planchers intermédiaires × L × l × (n − 1)
+   + (κ face 1 + κ face 2) cloisons × (ratio × Af)</div>
+      <ul>
+        <li>Les planchers intermédiaires et les cloisons ont leurs <b>deux faces</b> dans la maison : les deux comptent.</li>
+        <li>(H) La surface de cloisons est estimée par un ratio (m² de cloison par m² de plancher, 1,0 par défaut). Mesure-la sur le plan pour être juste.</li>
+        <li>Les fenêtres n'apportent pas de masse.</li>
+      </ul>
+
+      <h2>17. Exemple refait à la main : la maison d'exemple</h2>
+      <p>Plain-pied 10 × 8 m, hauteur d'étage 2,7 m, toit 2 pans à 35°, combles perdus, façade A plein Sud. Fenêtres : 6 m² au Sud (A), 3 m² à l'Ouest (B), 1,5 m² au Nord (C), 2,5 m² à l'Est (D), Uw = 1,4. Murs parpaing + ITI (U = 0,303), plafond BA13 + laine 30 cm (U = 0,113), dallage isolé (U = 0,330), cloisons BA13 (ratio 1,0).</p>
+      <div class="formule">Faîtage     h = 8/2 × tan 35° = 4 × 0,700 = 2,80 m   (pignons 8 × 2,80 / 2 = 11,2 m², hors enveloppe : combles perdus)
+Façades     A = C = 10 × 2,7 = 27 m²      B = D = 8 × 2,7 = 21,6 m²     total 97,2 m²
+Fenêtres    6 + 3 + 1,5 + 2,5 = 13 m²  →  murs opaques = 97,2 − 13 = 84,2 m²
+            13 / 80 = 16 % de la surface de plancher
+Plafond     10 × 8 = 80 m²      (combles aménagés : 80 / cos 35° = 80 / 0,819 = 97,7 m²)
+Volume      80 × 2,7 = 216 m³
+
+H = 0,3026 × 84,2 + 1,4 × 13 + 0,1132 × 80 + 0,3297 × 80      (U avec 4 décimales, voir l'atelier)
+  = 25,48 + 18,20 + 9,06 + 26,38 = 79,1 W/K      (≈ 1,0 W/K par m² de plancher)
+
+Cm = 14,27 × 84,2 + 13,83 × 80 + 63,45 × 80 + (12,06 + 12,06) × 80     [kJ/(m²·K) × m² = kJ/K]
+   = 1 202 + 1 106 + 5 076 + 1 930 = 9 314 kJ/K
+Cm / Af = 9 314 / 80 = 116 kJ/(m²·K)  →  classe « Légère »</div>
+      <p>Lecture : murs en ITI et cloisons légères, la seule vraie masse est le dallage (63 kJ/(m²·K) côté pièce). Passer les murs en ITE ou mettre des cloisons lourdes ferait monter la classe. Essaie-le dans l'onglet Projet.</p>
+
+      <h2>18. La maquette 3D : dessiner en 3D sans logiciel</h2>
+      <p>La maquette n'utilise aucune bibliothèque. Chaque face est un polygone de points (x vers l'Est, y vers le Nord, z vers le haut, en mètres). La caméra est définie par son azimut θ et sa hauteur φ, d'où trois vecteurs :</p>
+      <div class="formule">vers la caméra   c = (sin θ·cos φ, cos θ·cos φ, sin φ)
+droite de l'écran r = (−cos θ, sin θ, 0)    (on regarde vers −c ; sa droite = −c tourné de 90° dans le sens horaire)
+haut de l'écran   h = (−sin φ·sin θ, −sin φ·cos θ, cos φ)
+
+point P à l'écran :  x = P·r     y = −P·h      (projection orthogonale)
+face visible si sa normale n vérifie  n·c > 0</div>
+      <p>C'est de la géométrie vectorielle de base : un produit scalaire « projette » un point sur un axe de l'écran. La maison étant convexe, cacher les faces dont la normale ne regarde pas la caméra suffit pour un dessin juste. L'ombrage est un simple n·L avec une lumière fixe : le vrai soleil arrive à l'étape 2.</p>
+
+      <h2>19. Teste-toi</h2>
       <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
       <div id="teste-toi"></div>
 
-      <h2>15. Où est le code</h2>
+      <h2>20. Où est le code</h2>
       <ul>
         <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
+        <li><code>calcul/calcul-batiment.js</code> : chapitre 1 bis, la maison (surfaces, H, inertie).</li>
         <li><code>calcul/calcul.js</code> : le sommaire des chapitres.</li>
+        <li><code>affichage/maison3d.js</code> : la maquette 3D (projection, faces visibles, fenêtres, rotation).</li>
+        <li><code>affichage/projet.js</code> : l'onglet Projet (saisie, résultats ; aucun calcul).</li>
         <li><code>affichage/schemas.js</code> et <code>affichage/graphiques.js</code> : les dessins (aucun calcul).</li>
         <li><code>affichage/interface.js</code> : l'affichage et les boutons (aucun calcul).</li>
         <li><code>donnees/confort-materiaux.js</code> : les matériaux, parois et local d'exemple (publics).</li>
         <li><code>tests/confort-parois.test.js</code> : la validation (différences finies, exemple à la main, limites).</li>
-        <li>Fiche de compréhension : <code>docs/etape-1.md</code>.</li>
+        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>.</li>
       </ul>
     </div>
   </section>
@@ -423,6 +518,17 @@ Am = Cm² / Σ (κj² × Aj)        [m²]</div>
     </div>
 
     <div class="carte">
+      <div class="carte-titre"><h2>Types de fenêtres</h2><span id="stats-vitrages" class="aide"></span></div>
+      <p class="aide" style="margin:-4px 0 12px">Uw : coefficient de la fenêtre entière (vitrage + menuiserie), utilisé pour les déperditions. g : facteur solaire du vitrage, utilisé à partir de l'étape 2. Valeurs d'<b>exemple</b> : remplace-les par celles de tes fiches produits.</p>
+      <div class="defilement">
+        <table class="table-edition">
+          <thead><tr><th>Fenêtre</th><th class="num">Uw W/(m²·K)</th><th class="num">g</th><th>Source</th><th>Mois</th><th>Statut</th></tr></thead>
+          <tbody id="corps-vitrages"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
       <h2>Valeurs de norme utilisées</h2>
       <h3>Résistances superficielles (NF EN ISO 6946)</h3>
       <div class="defilement"><table id="table-rs"></table></div>
@@ -438,12 +544,16 @@ Am = Cm² / Σ (κj² × Aj)        [m²]</div>
 
 <script src="commun/commun.js"></script>
 <script src="donnees/confort-materiaux.js"></script>
+<script src="donnees/confort-projet.js"></script>
 <script src="calcul/calcul-parois.js"></script>
+<script src="calcul/calcul-batiment.js"></script>
 <script src="calcul/calcul.js"></script>
 <script src="affichage/schemas.js"></script>
 <script src="affichage/graphiques.js"></script>
 <script src="affichage/exercices.js"></script>
 <script src="donnees/lexique.js"></script>
+<script src="affichage/maison3d.js"></script>
 <script src="affichage/interface.js"></script>
+<script src="affichage/projet.js"></script>
 </body>
 </html>

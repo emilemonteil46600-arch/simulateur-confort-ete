@@ -18,6 +18,7 @@
      ⚠ Ne jamais renommer une clé existante sans migration : tes données seraient perdues.
      (Les clés « onglet » ne sont pas listées : ce n'est qu'un confort d'affichage.) */
   BAO.CLES_DONNEES = {
+    'bao.confort.projet.v1': 'Confort d\'été — le projet (la maison)',
     'bao.confort.paroi.v1': 'Confort d\'été — la paroi en cours',
     'bao.confort.parois.v1': 'Confort d\'été — tes parois enregistrées',
     'bao.confort.local.v1': 'Confort d\'été — le local (inertie)',

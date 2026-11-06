@@ -17,6 +17,21 @@ en quelques minutes, comprendre ce qui pèse), en complément de Pléiades, à u
 **À lire avant tout travail : `docs/CAHIER-DES-CHARGES.md`** (périmètre, entrées, moteur, météo, indicateurs,
 préconisations, validation, découpage en 8 étapes).
 
+## La vision d'Émile (07/11/2026) : surpuissant, très visuel, compris
+
+- N'importe qui peut demander à une IA « ma maison a-t-elle un bon confort d'été ? » et recevoir une réponse
+  approximative. Ce site doit faire **ce qu'un chatbot ne peut pas faire** : un vrai calcul physique heure par heure,
+  validé, reproductible, chiffré, comparable entre variantes, et montré de façon **très visuelle et très propre**.
+- **Pas d'IA intégrée.** La puissance vient de la physique, de la validation et de la transparence.
+- Les leviers qui le distinguent : simulation horaire sur une vraie météo (8 760 h), soleil et ombres sur la maquette 3D,
+  tous les indicateurs reconnus en même temps, note multicritère dont on voit chaque point, comparaison instantanée
+  de variantes, analyse de sensibilité (« ce qui fait gagner le plus »), validation publiée (BESTEST, Pléiades),
+  et le détail de chaque calcul à un clic.
+- Le public visé n'est pas « le pélo qui pose une question » : c'est l'**ingénieur** (Émile, ses clients, un jury, LinkedIn).
+- Toujours aussi important : **Émile comprend tout**. Plus tard : un document de synthèse complet (formules, processus,
+  sources, choix) qu'il pourra faire expliquer dans une autre conversation. Les fiches `docs/etape-*.md` en sont la base :
+  les garder complètes et à jour.
+
 ## RÈGLE N° 1 : Émile doit comprendre chaque étape
 
 - **Une étape = une PR.** À la fin de chaque étape : la fiche `docs/etape-N.md` en français simple (ce qu'on calcule,

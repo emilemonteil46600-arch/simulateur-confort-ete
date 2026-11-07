@@ -54,8 +54,13 @@ test('Lexique : chaque terme a un identifiant unique, une définition, et ses mo
 });
 
 test('Confidentialité : aucun nom de l\'entreprise dans les données publiques', function () {
-  fs.readdirSync(path.join(RACINE, 'donnees')).forEach(function (f) {
-    const texte = fs.readFileSync(path.join(RACINE, 'donnees', f), 'utf8');
-    assert.ok(!/argetec/i.test(texte), f + ' contient « Argetec »');
+  const fichiers = function (d) {
+    return fs.readdirSync(d, { withFileTypes: true }).flatMap(function (e) {
+      return e.isDirectory() ? fichiers(path.join(d, e.name)) : [path.join(d, e.name)];
+    });
+  };
+  fichiers(path.join(RACINE, 'donnees')).forEach(function (f) {
+    const texte = fs.readFileSync(f, 'utf8');
+    assert.ok(!/argetec/i.test(texte), path.relative(RACINE, f) + ' contient « Argetec »');
   });
 });

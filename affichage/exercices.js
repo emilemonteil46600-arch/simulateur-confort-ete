@@ -10,6 +10,12 @@
   const P = global.ConfortParois || (typeof require === 'function' ? require('../calcul/calcul-parois.js') : null);
   const B = global.ConfortBatiment || (typeof require === 'function' ? require('../calcul/calcul-batiment.js') : null);
   const Tr = global.ConfortTransitoire || (typeof require === 'function' ? require('../calcul/calcul-transitoire.js') : null);
+  const So = global.ConfortSoleil || (typeof require === 'function' ? require('../calcul/calcul-soleil.js') : null);
+  // Un soleil « à la main » (hauteur, azimut) avec son vecteur s, pour les exercices.
+  const soleilA = function (hauteur, azimut) {
+    const r = Math.PI / 180;
+    return { hauteur: hauteur, azimut: azimut, s: [Math.cos(hauteur * r) * Math.sin(azimut * r), Math.cos(hauteur * r) * Math.cos(azimut * r), Math.sin(hauteur * r)] };
+  };
   const BAO = global.BAO;
   const nb = BAO.nombre;
   const choisir = function (h, liste) { return liste[Math.floor(h() * liste.length)]; };
@@ -43,6 +49,24 @@
       correction: 'L\'onde journalière ne pénètre que de quelques centimètres (δ ≈ 17 cm dans le béton, et elle s\'écrase vite).\nEt la chaleur doit d\'abord passer Rsi : κ ne dépasse jamais T/(2π)/Rsi ≈ 106 kJ/(m²·K).\nLe béton du fond ne « voit » presque pas l\'onde : κ augmente à peine.'
     }
   ];
+
+  QUESTIONS.push(
+    {
+      enonce: 'Même fenêtre, même soleil : store <b>intérieur</b> ou store <b>extérieur</b>, lequel garde la maison la plus fraîche ?',
+      choix: ['l\'extérieur', 'l\'intérieur', 'pareil, ils arrêtent la même lumière'], bonne: 0,
+      correction: 'Le store intérieur arrête la lumière APRÈS la vitre : le rayonnement est déjà entré, il chauffe le store, qui chauffe l\'air de la pièce.\nLe store extérieur l\'arrête AVANT : la chaleur reste dehors. Ordres de grandeur (H) : Fc ≈ 0,65 à l\'intérieur, 0,15 à 0,30 à l\'extérieur.'
+    },
+    {
+      enonce: 'En juillet, à Toulouse, quelle façade verticale reçoit le plus de soleil sur la journée ?',
+      choix: ['l\'Ouest (ou l\'Est)', 'le Sud', 'le Nord'], bonne: 0,
+      correction: 'En été, à midi, le soleil est très haut (≈ 68° fin juin) : il arrive en biais sur une façade Sud (cos θ petit).\nLe matin et l\'après-midi, il est bas et presque en face des façades Est et Ouest : cos θ grand, pendant des heures.\nRésultat de l\'année type : en juillet, l\'Ouest reçoit nettement plus que le Sud. Et l\'Ouest prend son soleil au moment le plus chaud.'
+    },
+    {
+      enonce: 'Une casquette de 60 cm au-dessus d\'une fenêtre : où est-elle la plus efficace en été ?',
+      choix: ['au Sud', 'à l\'Ouest', 'au Nord'], bonne: 0,
+      correction: 'L\'ombre d\'une casquette descend de d × tan Ω (Ω, angle de profil). Au Sud, l\'été, le soleil est haut et en face : Ω grand, ombre longue.\nÀ l\'Ouest, le soleil est bas en fin de journée : tan Ω petit, il passe sous la casquette. À l\'Ouest, il faut des protections verticales ou mobiles.'
+    }
+  );
 
   const ConfortExercices = [
     {
@@ -146,6 +170,53 @@
           enonce: '<b>' + nb(e * 100) + ' cm de ' + m.nom + '</b> (λ = ' + nb(m.lambda, 3) + ', ρ = ' + nb(m.rho) + ', c = ' + nb(m.c) + '). Ordre de grandeur du temps que met une variation de température à traverser cette épaisseur (t ≈ e²/a), en heures ?',
           correction: 'a = λ / (ρ·c) = ' + nb(m.lambda, 3) + ' / (' + nb(m.rho) + ' × ' + nb(m.c) + ') = ' + nb(a * 1e6, 3) + '·10⁻⁶ m²/s\n' +
             't ≈ e² / a = ' + nb(e, 2) + '² / ' + nb(a * 1e6, 3) + '·10⁻⁶ = ' + nb(reponse * 3600) + ' s = ' + nb(reponse, 1) + ' h'
+        };
+      }
+    },
+    {
+      titre: 'Hauteur du soleil à midi',
+      generer: function (h) {
+        const lat = BAO.tirer(h, 42, 51, 0.5);
+        const jour = choisir(h, [[3, 21], [5, 15], [6, 21], [7, 21], [8, 15], [9, 22]]);
+        const n = So.jourDeLAnnee(jour[0], jour[1]);
+        const delta = So.declinaison(n);
+        const reponse = 90 - lat + delta;
+        return {
+          type: 'nombre', unite: '°', tolerance: 0.5, reponse: reponse,
+          enonce: 'Latitude <b>' + nb(lat, 1) + '° N</b>, le <b>' + So.dateDuJour(n).nom + '</b> : la déclinaison vaut δ = ' + nb(delta, 2) + '°. Quelle est la hauteur du soleil à midi solaire ?',
+          correction: 'À midi solaire, ω = 0 : sin h = sin φ·sin δ + cos φ·cos δ = cos(φ − δ), donc h = 90° − φ + δ.\n' +
+            'h = 90 − ' + nb(lat, 1) + ' + ' + nb(delta, 2) + ' = ' + nb(reponse, 1) + '°'
+        };
+      }
+    },
+    {
+      titre: 'Le soleil direct sur une façade',
+      generer: function (h) {
+        const haut = BAO.tirer(h, 20, 60, 5), Gbn = BAO.tirer(h, 500, 850, 50);
+        const fac = choisir(h, [{ nom: 'Sud', a: 180 }, { nom: 'Ouest', a: 270 }, { nom: 'Sud-Ouest', a: 225 }]);
+        const az = fac.a + BAO.tirer(h, -60, 60, 10);   // soleil devant la façade (à 60° au plus de sa normale)
+        const ecl = So.eclairementParoi({ Gbn: Gbn, Gdh: 0 }, soleilA(haut, az), 90, fac.a, 0);
+        const reponse = ecl.direct;
+        return {
+          type: 'nombre', unite: 'W/m²', tolerance: Math.max(5, reponse * 0.02), reponse: reponse,
+          enonce: 'Soleil à <b>' + nb(haut) + '°</b> de hauteur, azimut <b>' + nb(az) + '°</b> ; rayonnement direct normal Gbn = <b>' + nb(Gbn) + ' W/m²</b>. Combien de W/m² de <b>direct</b> reçoit une façade verticale <b>' + fac.nom + '</b> (azimut ' + fac.a + '°) ?',
+          correction: 'Façade verticale : cos θ = cos h × cos(a − γ) (le produit scalaire s·n avec n horizontal).\n' +
+            'cos θ = cos ' + nb(haut) + '° × cos(' + nb(az) + ' − ' + fac.a + ')° = ' + nb(Math.cos(haut * Math.PI / 180), 3) + ' × ' + nb(Math.cos((az - fac.a) * Math.PI / 180), 3) + ' = ' + nb(ecl.cosIncidence, 3) + '\n' +
+            'Direct = Gbn × cos θ = ' + nb(Gbn) + ' × ' + nb(ecl.cosIncidence, 3) + ' = ' + nb(reponse) + ' W/m²' + (ecl.cosIncidence <= 0 ? ' (soleil derrière la façade : 0)' : '')
+        };
+      }
+    },
+    {
+      titre: 'La chaleur qui entre par une fenêtre',
+      generer: function (h) {
+        const I = BAO.tirer(h, 300, 700, 50), A = BAO.tirer(h, 1, 6, 0.5), g = choisir(h, [0.5, 0.6, 0.75]);
+        const prot = choisir(h, [{ nom: 'aucune', Fc: 1 }, { nom: 'un store extérieur (Fc = 0,3)', Fc: 0.3 }, { nom: 'un store intérieur (Fc = 0,65)', Fc: 0.65 }]);
+        const a = So.apportFenetre({ direct: I, diffus: 0, reflechi: 0, total: I }, { surface: A, g: g, partCadre: So.PART_CADRE, Fw: So.FACTEUR_INCIDENCE, protection: prot.Fc < 1 ? { Fc: prot.Fc } : null, seuil: 0 });
+        return {
+          type: 'nombre', unite: 'W', tolerance: Math.max(5, a.flux * 0.02), reponse: a.flux,
+          enonce: 'Une baie de <b>' + nb(A, 1) + ' m²</b> (cadre 30 %, Fw = 0,9), vitrage <b>g = ' + nb(g, 2) + '</b>, reçoit <b>' + nb(I) + ' W/m²</b> ; protection : ' + prot.nom + ', baissée. Combien de watts entrent ?',
+          correction: 'Φ = I × A × (1 − Ff) × g × Fw × Fc\n= ' + nb(I) + ' × ' + nb(A, 1) + ' × 0,7 × ' + nb(g, 2) + ' × 0,9 × ' + nb(prot.Fc, 2) + ' = ' + nb(a.flux) + ' W\n' +
+            '(soit l\'équivalent de ' + nb(a.flux / 75, 1) + ' personnes au repos, à 75 W chacune)'
         };
       }
     },

@@ -16,8 +16,13 @@
       x écran = P·r ,  y écran = −P·h   (produits scalaires, puis mise à l'échelle).
    4. Une face n'est visible que si sa normale n regarde la caméra : n·c > 0.
       La maison étant un volume convexe, cela suffit à cacher les faces arrière.
-   5. Ombrage : plus une face est tournée vers une lumière fixe L, plus elle est claire
-      (on assombrit de 0,3 × (1 − n·L)). Le vrai soleil arrive à l'étape 2.
+   5. Ombrage : plus une face est tournée vers la lumière L, plus elle est claire
+      (on assombrit de 0,3 × (1 − n·L)). Sans météo, L est une lumière fixe ; avec la météo (étape 2),
+      L est le VRAI soleil de l'heure choisie (vecteur s du chapitre 2), et chaque façade se teinte
+      d'orange en proportion des W/m² qu'elle reçoit.
+   6. Ombre portée au sol (étape 2) : chaque sommet P de la maison est projeté sur le sol
+      le long des rayons du soleil : P' = P − s × (z_P / s_z). L'ombre est l'enveloppe convexe
+      de ces points (la maison est convexe, son ombre aussi).
    ========================================================== */
 (function (global) {
   'use strict';
@@ -109,7 +114,8 @@
         const k = cadres[f];
         const decale = fois(k.n, 0.03);
         const pt = function (x, zz) { return plus(plus(plus(k.o, fois(k.t, x)), [0, 0, zz]), decale); };
-        fenetres.push({ facade: f, n: k.n, protection: fa.protection || 'aucune', w: w, pt: pt, avant: k.n });
+        fenetres.push({ facade: f, n: k.n, protection: fa.protection || 'aucune', w: w, pt: pt, avant: k.n,
+          casquette: Number(((projet.casquettes || {})[f])) || 0 });
       });
     });
 
@@ -153,19 +159,44 @@
 
   function nb(v, d) { return global.BAO ? global.BAO.nombre(v, d) : String(v); }
 
-  function rendreSVG(projet, vue, selection) {
+  // soleil (facultatif, étape 2) = { s, hauteur, azimut, course: [vecteurs s du jour], eclairement: {A, B, C, D, toiture} (W/m²),
+  //   baissees: {A: true…} (protections baissées), ensoleillement: {A: part de vitre au soleil} }
+  function rendreSVG(projet, vue, selection, soleil) {
     const m = construire(projet);
     const cam = camera(vue.theta, vue.phi);
     const R = m.rayonSol;
-    // Échelle : le sol (cercle de rayon R) et la hauteur de la maison doivent tenir dans le cadre.
-    const s = vue.zoom * Math.min(LARGEUR * 0.92 / (2 * R), HAUTEUR * 0.86 / (2 * R * Math.sin(vue.phi * RAD) + m.hauteur * Math.cos(vue.phi * RAD)));
-    const yMilieu = (m.hauteur * Math.cos(vue.phi * RAD)) / 2;
-    const ecran = function (p) { return [LARGEUR / 2 + s * scalaire(p, cam.r), HAUTEUR / 2 - s * (scalaire(p, cam.h) - yMilieu)]; };
+    const leve = soleil && soleil.hauteur > 0;
+    const DIST_SOLEIL = R * 1.05;   // le soleil est dessiné sur une demi-sphère de ce rayon (m)
+    // Échelle : tout ce qui est dessiné (sol, maison, course du soleil) doit tenir dans le cadre.
+    const aCadrer = [];
+    for (let i = 0; i < 16; i++) aCadrer.push([(R + 1.3) * Math.sin(i / 16 * 2 * Math.PI), (R + 1.3) * Math.cos(i / 16 * 2 * Math.PI), 0]);
+    m.faces.forEach(function (f) { f.pts.forEach(function (p) { aCadrer.push(p); }); });
+    if (soleil && soleil.course) soleil.course.forEach(function (v) { aCadrer.push(fois(v, DIST_SOLEIL)); });
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    aCadrer.forEach(function (p) {
+      const x = scalaire(p, cam.r), y = scalaire(p, cam.h);
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    });
+    const s = vue.zoom * Math.min(LARGEUR * 0.92 / (x1 - x0), HAUTEUR * 0.84 / (y1 - y0));
+    const xm = (x0 + x1) / 2, ym = (y0 + y1) / 2;
+    const ecran = function (p) { return [LARGEUR / 2 + s * (scalaire(p, cam.r) - xm), HAUTEUR / 2 - s * (scalaire(p, cam.h) - ym)]; };
     const chemin = function (pts) { return pts.map(function (p) { const e = ecran(p); return e[0].toFixed(1) + ',' + e[1].toFixed(1); }).join(' '); };
+    const lumiere = leve ? soleil.s : LUMIERE;
 
-    let svg = '<svg class="maison3d" viewBox="0 0 ' + LARGEUR + ' ' + HAUTEUR + '" role="img" aria-label="Maquette 3D de la maison. Glisse pour tourner, clique sur une façade pour la modifier.">';
-    svg += '<defs><linearGradient id="m-ciel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="m-ciel-haut"/><stop offset="1" class="m-ciel-bas"/></linearGradient></defs>';
+    let svg = '<svg class="maison3d' + (soleil && !leve ? ' m-nuit' : '') + '" viewBox="0 0 ' + LARGEUR + ' ' + HAUTEUR + '" role="img" aria-label="Maquette 3D de la maison. Glisse pour tourner, clique sur une façade pour la modifier.">';
+    svg += '<defs><linearGradient id="m-ciel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="m-ciel-haut"/><stop offset="1" class="m-ciel-bas"/></linearGradient>' +
+      '<radialGradient id="m-halo"><stop offset="0" stop-color="#ffd76a" stop-opacity=".9"/><stop offset=".45" stop-color="#ffcf4a" stop-opacity=".35"/><stop offset="1" stop-color="#ffcf4a" stop-opacity="0"/></radialGradient></defs>';
     svg += '<rect width="' + LARGEUR + '" height="' + HAUTEUR + '" fill="url(#m-ciel)"/>';
+
+    // La course du soleil dans la journée (pointillés), et le soleil lui-même.
+    if (soleil && soleil.course && soleil.course.length > 1) {
+      svg += '<polyline points="' + chemin(soleil.course.map(function (v) { return fois(v, DIST_SOLEIL); })) + '" class="m-course"/>';
+    }
+    if (leve) {
+      const e = ecran(fois(soleil.s, DIST_SOLEIL));
+      svg += '<circle cx="' + e[0].toFixed(1) + '" cy="' + e[1].toFixed(1) + '" r="34" fill="url(#m-halo)"/>' +
+        '<circle cx="' + e[0].toFixed(1) + '" cy="' + e[1].toFixed(1) + '" r="11" class="m-soleil"/>';
+    }
 
     // Le sol et la rose des vents.
     const cercle = [];
@@ -183,24 +214,33 @@
       svg += '<text x="' + ext[0].toFixed(1) + '" y="' + (ext[1] + 4).toFixed(1) + '" class="m-cardinal' + (x[0] === 'N' ? ' m-nord' : '') + '" text-anchor="middle">' + x[0] + '</text>';
     });
 
-    // Ombre portée simple sous la maison (projection verticale de l'emprise, décalée).
-    svg += '<polygon points="' + chemin(m.empreinte.map(function (p) { return plus(p, [0.35, -0.35, 0]); })) + '" class="m-ombre"/>';
+    // Ombre portée : le vrai soleil (étape 2), sinon une ombre douce sous la maison.
+    if (leve && soleil.s[2] > 0.03) {
+      const projetes = m.empreinte.slice();
+      m.faces.forEach(function (f) { f.pts.forEach(function (p) { projetes.push(ombreAuSol(p, soleil.s)); }); });
+      svg += '<polygon points="' + chemin(enveloppeConvexe(projetes)) + '" class="m-ombre-soleil"/>';
+    } else if (!soleil) {
+      svg += '<polygon points="' + chemin(m.empreinte.map(function (p) { return plus(p, [0.35, -0.35, 0]); })) + '" class="m-ombre"/>';
+    }
 
     // Les faces visibles, de la plus lointaine à la plus proche.
     const visibles = m.faces.filter(function (f) { return scalaire(f.n, cam.c) > 1e-6; })
       .sort(function (a, b) { return scalaire(centre(a.pts), cam.c) - scalaire(centre(b.pts), cam.c); });
     const facadesVisibles = {};
     visibles.forEach(function (f) {
-      const sombre = 0.3 * (1 - Math.max(0, scalaire(f.n, LUMIERE)));
+      const sombre = (soleil ? (leve ? 0.42 : 0.55) : 0.3) * (1 - (leve || !soleil ? Math.max(0, scalaire(f.n, lumiere)) : 0));
+      const ecl = soleil && soleil.eclairement ? (f.type === 'mur' ? soleil.eclairement[f.id] : soleil.eclairement.toiture) : 0;
+      const chauffe = ecl > 0 ? Math.min(0.55, ecl / 900 * 0.55) : 0;
       const cible = f.type === 'mur' ? f.id : 'toiture';
       const choisi = selection === cible;
       if (f.type === 'mur') facadesVisibles[f.id] = f;
       svg += '<g class="m-face m-' + f.type + (choisi ? ' m-choisi' : '') + '" data-cible="' + cible + '">' +
         '<polygon points="' + chemin(f.pts) + '" class="m-fond-' + f.type + '"/>' +
         '<polygon points="' + chemin(f.pts) + '" class="m-ombrage" fill-opacity="' + sombre.toFixed(3) + '"/>' +
+        (chauffe > 0.01 ? '<polygon points="' + chemin(f.pts) + '" class="m-chauffe" fill-opacity="' + chauffe.toFixed(3) + '"/>' : '') +
         (f.type === 'toit' ? tuiles(f, chemin) : '') +
         '<polygon points="' + chemin(f.pts) + '" class="m-contour"/></g>';
-      if (f.type === 'mur') svg += dessinerFenetres(m.fenetres.filter(function (w) { return w.facade === f.id; }), chemin, f.id);
+      if (f.type === 'mur') svg += dessinerFenetres(m.fenetres.filter(function (w) { return w.facade === f.id; }), chemin, f.id, soleil);
     });
 
     // Étiquettes des façades visibles.
@@ -210,8 +250,11 @@
       const haut = f.pts.reduce(function (m2, p) { return Math.max(m2, p[2]); }, 0);
       const milieu = centre(f.pts.filter(function (p) { return p[2] === 0; }));
       const e = ecran([milieu[0], milieu[1], Math.min(haut, m.Hm) + 0.15]);
-      svg += '<g class="m-etiquette' + (selection === id ? ' m-choisi' : '') + '" data-cible="' + id + '"><rect x="' + (e[0] - 34).toFixed(1) + '" y="' + (e[1] - 26).toFixed(1) + '" width="68" height="20" rx="10"/>' +
-        '<text x="' + e[0].toFixed(1) + '" y="' + (e[1] - 12).toFixed(1) + '" text-anchor="middle">' + id + ' · ' + B.orientation(az[id]).court + '</text></g>';
+      const wm2 = soleil && soleil.eclairement ? soleil.eclairement[id] : null;
+      const texte = id + ' · ' + B.orientation(az[id]).court + (wm2 !== null && wm2 !== undefined ? '  ' + nb(wm2) + ' W/m²' : '');
+      const larg = wm2 !== null && wm2 !== undefined ? 116 : 68;
+      svg += '<g class="m-etiquette' + (selection === id ? ' m-choisi' : '') + '" data-cible="' + id + '"><rect x="' + (e[0] - larg / 2).toFixed(1) + '" y="' + (e[1] - 26).toFixed(1) + '" width="' + larg + '" height="20" rx="10"/>' +
+        '<text x="' + e[0].toFixed(1) + '" y="' + (e[1] - 12).toFixed(1) + '" text-anchor="middle">' + texte + '</text></g>';
     });
     svg += '</svg>';
     return svg;
@@ -246,19 +289,44 @@
     return res.length === 2 ? res : null;
   }
 
-  function dessinerFenetres(liste, chemin, facade) {
+  // Ombre au sol d'un point P le long des rayons du soleil s : P' = P − s × (z_P / s_z).
+  function ombreAuSol(p, s) { return [p[0] - s[0] * p[2] / s[2], p[1] - s[1] * p[2] / s[2], 0]; }
+
+  // Enveloppe convexe de points du sol (algorithme de la « chaîne monotone » d'Andrew).
+  function enveloppeConvexe(pts) {
+    const P = pts.map(function (p) { return [p[0], p[1]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    const croix = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
+    const bas = [], haut = [];
+    P.forEach(function (p) { while (bas.length >= 2 && croix(bas[bas.length - 2], bas[bas.length - 1], p) <= 0) bas.pop(); bas.push(p); });
+    P.slice().reverse().forEach(function (p) { while (haut.length >= 2 && croix(haut[haut.length - 2], haut[haut.length - 1], p) <= 0) haut.pop(); haut.push(p); });
+    return bas.slice(0, -1).concat(haut.slice(0, -1)).map(function (p) { return [p[0], p[1], 0]; });
+  }
+
+  function dessinerFenetres(liste, chemin, facade, soleil) {
     let svg = '';
+    const baissee = !!(soleil && soleil.baissees && soleil.baissees[facade]);
+    const auSoleil = soleil && soleil.ensoleillement && soleil.ensoleillement[facade] !== undefined ? soleil.ensoleillement[facade] : 1;
     liste.forEach(function (w) {
       const r = w.w, pt = w.pt;
       const rect = [pt(r.x0, r.z0), pt(r.x1, r.z0), pt(r.x1, r.z1), pt(r.x0, r.z1)];
       svg += '<g class="m-fenetre" data-cible="' + facade + '">';
       svg += '<polygon points="' + chemin(rect) + '" class="m-vitre"/>';
+      // L'ombre de la casquette sur le haut de la vitre (part non ensoleillée).
+      if (w.casquette > 0 && auSoleil < 0.999) {
+        const zb = r.z1 - (r.z1 - r.z0) * (1 - auSoleil);
+        svg += '<polygon points="' + chemin([pt(r.x0, zb), pt(r.x1, zb), pt(r.x1, r.z1), pt(r.x0, r.z1)]) + '" class="m-ombre-vitre"/>';
+      }
       // Reflet : un petit triangle clair dans le coin.
       svg += '<polygon points="' + chemin([pt(r.x0 + (r.x1 - r.x0) * 0.1, r.z1 - 0.1), pt(r.x0 + (r.x1 - r.x0) * 0.45, r.z1 - 0.1), pt(r.x0 + (r.x1 - r.x0) * 0.1, r.z0 + (r.z1 - r.z0) * 0.45)]) + '" class="m-reflet"/>';
       svg += '<polygon points="' + chemin(rect) + '" class="m-cadre"/>';
       const milieu = (r.x0 + r.x1) / 2;
       if (r.x1 - r.x0 > 0.8) svg += '<polyline points="' + chemin([pt(milieu, r.z0), pt(milieu, r.z1)]) + '" class="m-cadre"/>';
       svg += protection(w, chemin);
+      if (baissee) svg += protectionBaissee(w, chemin);
+      if (w.casquette > 0) {
+        const sortie = fois(w.avant, w.casquette), zc = r.z1 + 0.2;
+        svg += '<polygon points="' + chemin([pt(r.x0 - 0.25, zc), pt(r.x1 + 0.25, zc), plus(pt(r.x1 + 0.25, zc), sortie), plus(pt(r.x0 - 0.25, zc), sortie)]) + '" class="m-casquette"/>';
+      }
       svg += '</g>';
     });
     return svg;
@@ -289,15 +357,26 @@
     return '';
   }
 
+  // La protection baissée à l'heure affichée (le calcul la baisse quand la façade dépasse le seuil).
+  function protectionBaissee(w, chemin) {
+    const r = w.w, pt = w.pt, p = w.protection;
+    if (p === 'aucune') return '';
+    if (p === 'store-interieur') return '<polygon points="' + chemin([pt(r.x0 + 0.04, r.z0 + 0.1), pt(r.x1 - 0.04, r.z0 + 0.1), pt(r.x1 - 0.04, r.z1 - 0.04), pt(r.x0 + 0.04, r.z1 - 0.04)]) + '" class="m-store-int"/>';
+    const bas = p === 'volet-battant' ? r.z0 : r.z1 - (r.z1 - r.z0) * 0.75;
+    let s = '<polygon points="' + chemin([pt(r.x0, bas), pt(r.x1, bas), pt(r.x1, r.z1), pt(r.x0, r.z1)]) + '" class="m-baisse m-baisse-' + p + '"/>';
+    if (p === 'volet-roulant' || p === 'bso') for (let z = r.z1 - 0.1; z > bas + 0.02; z -= p === 'bso' ? 0.08 : 0.12) s += '<polyline points="' + chemin([pt(r.x0, z), pt(r.x1, z)]) + '" class="m-lames"/>';
+    return s;
+  }
+
   /* ---------- 4. Le composant : rotation à la souris, sélection ---------- */
 
   // options.surSelection(cible) : 'A' | 'B' | 'C' | 'D' | 'toiture'
   function creer(element, options) {
-    const etat = { projet: null, selection: null, vue: vueInitiale(0) };
+    const etat = { projet: null, selection: null, vue: vueInitiale(0), soleil: null };
     let glisse = null;
 
     function vueInitiale(azimutA) { return { theta: Number(azimutA) - 35, phi: 26, zoom: 1 }; }
-    function dessiner() { if (etat.projet) element.querySelector('.m-scene').innerHTML = rendreSVG(etat.projet, etat.vue, etat.selection); }
+    function dessiner() { if (etat.projet) element.querySelector('.m-scene').innerHTML = rendreSVG(etat.projet, etat.vue, etat.selection, etat.soleil); }
 
     element.innerHTML = '<div class="m-scene" tabindex="0"></div>' +
       '<div class="m-outils">' +
@@ -358,11 +437,15 @@
         if (premier) etat.vue = vueInitiale(projet.geometrie.orientation);
         dessiner();
       },
-      vue: function () { return etat.vue; }
+      vue: function () { return etat.vue; },
+      // Le soleil de l'heure affichée (étape 2) ; null pour revenir à la lumière fixe.
+      soleil: function (info) { etat.soleil = info; dessiner(); },
+      element: element
     };
   }
 
-  const ConfortMaison3D = { creer: creer, construire: construire, camera: camera, dispositionFenetres: dispositionFenetres, rendreSVG: rendreSVG };
+  const ConfortMaison3D = { creer: creer, construire: construire, camera: camera, dispositionFenetres: dispositionFenetres, rendreSVG: rendreSVG,
+    ombreAuSol: ombreAuSol, enveloppeConvexe: enveloppeConvexe };
   global.ConfortMaison3D = ConfortMaison3D;
   if (typeof module !== 'undefined' && module.exports) module.exports = ConfortMaison3D;
 })(typeof window !== 'undefined' ? window : globalThis);

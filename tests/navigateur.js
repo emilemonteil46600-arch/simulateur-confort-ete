@@ -64,6 +64,29 @@ async function nouvellePage(navigateur, options) {
   await page.click('#btn-projet-exemple');
   ok((await resProjet()).includes('79 W/K'), 'Retour à la maison d\'exemple');
 
+  console.log('2 bis. Étape 2 : le soleil sur la maison');
+  await page.waitForSelector('#soleil-projet .minis');
+  const apports = function () { return page.textContent('#carte-apports').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  ok(await page.$('#maison3d .m-soleil') !== null && await page.$('#maison3d .m-ombre-soleil') !== null, 'Soleil et ombre portée sur la maquette (21 juillet, 16 h)');
+  ok((await apports()).includes('816') && (await apports()).includes('1 092'), 'Maison d\'exemple à Toulouse : 816 kWh par les fenêtres, 1 092 kWh internes (juin → septembre)');
+  ok(await page.$$eval('#maison3d .m-baisse', function (x) { return x.length; }) > 0, 'Volets baissés sur la façade au soleil');
+  await page.click('#soleil-pas summary, .soleil-pas summary');
+  const detail = await page.textContent('#soleil-detail');
+  ok(detail.includes('385,6'), 'Détail pas à pas de l\'heure (façade Sud 385,6 W/m²)');
+  await page.$eval('#soleil-heure', function (e) { e.value = 23; e.dispatchEvent(new Event('input', { bubbles: true })); });
+  ok(await page.$('#maison3d svg.m-nuit') !== null && await page.$('#maison3d .m-soleil') === null, 'À 23 h : la nuit, pas de soleil');
+  await page.$eval('#soleil-heure', function (e) { e.value = 16; e.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.$eval('details[data-pas="fenetres"]', function (d) { d.open = true; });
+  await page.fill('.facade-ligne[data-facade="A"] input[data-champ="casquette"]', '1');
+  await page.press('.facade-ligne[data-facade="A"] input[data-champ="casquette"]', 'Tab');
+  ok(await page.$('#maison3d .m-casquette') !== null && !(await apports()).includes('816'), 'Casquette de 1 m sur A : dessinée, les apports baissent');
+  await page.selectOption('#projet-ville', 'marseille');
+  await page.waitForFunction(function () { return document.querySelector('#soleil-projet .aide') && document.querySelector('#soleil-projet').textContent.includes('Marseille'); });
+  ok(true, 'Changement de ville : la météo de Marseille se charge');
+  await page.click('#btn-projet-exemple');
+  await page.waitForFunction(function () { return document.querySelector('#soleil-projet').textContent.includes('Toulouse'); });
+  ok((await apports()).includes('816'), 'Retour à l\'exemple : Toulouse, 816 kWh');
+
   console.log('3. Atelier parois (étape 1)');
   await page.click('[data-onglet="atelier"]');
   const resultat = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };

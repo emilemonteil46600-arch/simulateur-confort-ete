@@ -9,7 +9,7 @@
      Chapitre 1 bis calcul-batiment.js  La maison : orientation, surfaces, volume,
                                         déperditions H = Σ U·A, inertie de la maison
      Chapitre 1 ter calcul-transitoire.js Le labo : la chaleur qui avance (différences finies)
-     Chapitre 2  calcul-soleil.js       (étape 2) météo, soleil sur les façades, apports
+     Chapitre 2  calcul-soleil.js       Météo, soleil sur les façades, apports de chaleur
      Chapitre 3  calcul-5r1c.js         (étape 3) le modèle horaire 5R1C
      Chapitre 4  calcul-indicateurs.js  (étape 4) heures, DH, adaptatif, PMV/PPD, score
      Chapitre 5  calcul-preconisations.js (étape 5) sensibilité et bouquets
@@ -29,10 +29,14 @@
   const transitoire = global.ConfortTransitoire ||
     (typeof require === 'function' ? require('./calcul-transitoire.js') : null);
 
+  const soleil = global.ConfortSoleil ||
+    (typeof require === 'function' ? require('./calcul-soleil.js') : null);
+
   const ConfortCalcul = {
     parois: parois,
     batiment: batiment,
-    transitoire: transitoire
+    transitoire: transitoire,
+    soleil: soleil
   };
 
   global.ConfortCalcul = ConfortCalcul;

@@ -306,6 +306,14 @@ body.appli { background: var(--fond); }
 .labo-rond { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--bord-fort); background: var(--surface); font: inherit; font-weight: 700; color: var(--encre); cursor: pointer; }
 .labo-rond:hover { border-color: var(--accent); color: var(--accent); }
 .labo-rond.danger { color: var(--danger); }
+.labo-poubelle { cursor: pointer; }
+.labo-poubelle circle { fill: var(--surface); fill-opacity: .9; stroke: var(--bord-fort); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .12)); transition: fill .15s; }
+.labo-poubelle path { fill: none; stroke: var(--encre-2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.labo-poubelle:hover circle { fill: var(--danger); stroke: var(--danger); fill-opacity: 1; }
+.labo-poubelle:hover path { stroke: #fff; }
+.labo-jeter-cadre { fill: var(--danger); fill-opacity: .25; stroke: var(--danger); stroke-width: 3; stroke-dasharray: 8 5; }
+.labo-retirer { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); background: var(--surface); color: var(--danger); font: inherit; font-weight: 700; cursor: pointer; }
+.labo-retirer:hover { background: var(--danger); color: #fff; }
 .labo-commandes { display: flex; gap: 10px; align-items: center; margin: 14px 0 6px; }
 .labo-commandes input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
 .labo-jouer { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; font-size: 1.15rem; cursor: pointer; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }

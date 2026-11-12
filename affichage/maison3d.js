@@ -160,7 +160,8 @@
   function nb(v, d) { return global.BAO ? global.BAO.nombre(v, d) : String(v); }
 
   // soleil (facultatif, étape 2) = { s, hauteur, azimut, course: [vecteurs s du jour], eclairement: {A, B, C, D, toiture} (W/m²),
-  //   baissees: {A: true…} (protections baissées), ensoleillement: {A: part de vitre au soleil} }
+  //   baissees: {A: true…} (protections baissées), ensoleillement: {A: part de vitre au soleil},
+  //   interieur (étape 3) : { Top, couleur } la température dedans, pour teinter les vitres et l'étiquette }
   function rendreSVG(projet, vue, selection, soleil) {
     const m = construire(projet);
     const cam = camera(vue.theta, vue.phi);
@@ -256,6 +257,12 @@
       svg += '<g class="m-etiquette' + (selection === id ? ' m-choisi' : '') + '" data-cible="' + id + '"><rect x="' + (e[0] - larg / 2).toFixed(1) + '" y="' + (e[1] - 26).toFixed(1) + '" width="' + larg + '" height="20" rx="10"/>' +
         '<text x="' + e[0].toFixed(1) + '" y="' + (e[1] - 12).toFixed(1) + '" text-anchor="middle">' + texte + '</text></g>';
     });
+    // Étape 3 : la température dedans à l'heure affichée (pastille en haut à droite).
+    if (soleil && soleil.interieur) {
+      svg += '<g class="m-dedans"><rect x="' + (LARGEUR - 158) + '" y="14" width="144" height="30" rx="15"/>' +
+        '<circle cx="' + (LARGEUR - 141) + '" cy="29" r="8" style="fill:' + soleil.interieur.couleur + '"/>' +
+        '<text x="' + (LARGEUR - 126) + '" y="34">dedans <tspan>' + nb(soleil.interieur.Top, 1) + ' °C</tspan></text></g>';
+    }
     svg += '</svg>';
     return svg;
   }
@@ -310,7 +317,8 @@
       const r = w.w, pt = w.pt;
       const rect = [pt(r.x0, r.z0), pt(r.x1, r.z0), pt(r.x1, r.z1), pt(r.x0, r.z1)];
       svg += '<g class="m-fenetre" data-cible="' + facade + '">';
-      svg += '<polygon points="' + chemin(rect) + '" class="m-vitre"/>';
+      // Étape 3 : les vitres prennent la couleur de la température dedans (bleu frais → rouge chaud).
+      svg += '<polygon points="' + chemin(rect) + '" class="m-vitre"' + (soleil && soleil.interieur ? ' style="fill:' + soleil.interieur.couleur + '"' : '') + '/>';
       // L'ombre de la casquette sur le haut de la vitre (part non ensoleillée).
       if (w.casquette > 0 && auSoleil < 0.999) {
         const zb = r.z1 - (r.z1 - r.z0) * (1 - auSoleil);

@@ -6,8 +6,8 @@
   <title>Simulateur de confort d'été</title>
   <meta name="description" content="Simulateur de confort d'été transparent : maison en 3D, parois couche par couche (NF EN ISO 13786), déperditions, inertie, et bientôt une note de confort multicritère (Givoni, degrés-heures, confort adaptatif).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="commun/style.css?v=20261111">
-  <link rel="stylesheet" href="affichage/site.css?v=20261111">
+  <link rel="stylesheet" href="commun/style.css?v=20261112">
+  <link rel="stylesheet" href="affichage/site.css?v=20261112">
 </head>
 <body class="appli">
 
@@ -24,7 +24,7 @@
       <button data-onglet="donnees">Données</button>
     </nav>
     <a class="lien-bao" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils">Boîte à outils ↗</a>
-    <span class="version">Étape 2 · nov. 2026</span>
+    <span class="version">Étape 3 · nov. 2026</span>
   </div>
 </header>
 
@@ -95,6 +95,23 @@
           </div>
         </details>
 
+        <details class="pas" data-pas="air">
+          <summary><span class="pas-n">7</span><span class="pas-titre">L'air</span><span class="pas-resume" data-resume="air"></span></summary>
+          <div class="pas-corps">
+            <div class="curseur"><label for="v-vmc">Ventilation (VMC, hygiénique)</label><input type="range" id="v-vmc" min="0" max="2" step="0.05" data-vent="vmc"><output data-sortie="vmc"></output></div>
+            <div class="curseur"><label for="v-n50">Perméabilité à l'air n50 → infiltrations n50/20 (H)</label><input type="range" id="v-n50" min="0" max="12" step="0.5" data-vent="n50"><output data-sortie="n50"></output></div>
+            <label class="interrupteur"><input type="checkbox" id="vent-nuit-active"><span>J'ouvre les fenêtres la nuit quand il fait plus frais dehors</span></label>
+            <div id="bloc-nuit" class="pas-sous">
+              <div class="champ"><span class="etiquette">Fenêtres</span><div class="segments" id="vent-nuit-debit" role="group" aria-label="Débit de surventilation nocturne"></div></div>
+              <div class="curseur"><label for="v-nuit-debut">De</label><input type="range" id="v-nuit-debut" min="18" max="23" step="1" data-nuit="debut"><output data-sortie="nuitDebut"></output></div>
+              <div class="curseur"><label for="v-nuit-fin">Jusqu'à</label><input type="range" id="v-nuit-fin" min="4" max="10" step="1" data-nuit="fin"><output data-sortie="nuitFin"></output></div>
+              <div class="curseur"><label for="v-nuit-seuil">Seulement si dedans dépasse</label><input type="range" id="v-nuit-seuil" min="20" max="28" step="0.5" data-nuit="seuil"><output data-sortie="nuitSeuil"></output></div>
+              <div class="curseur"><label for="v-nuit-ecart">et si dehors est plus frais d'au moins</label><input type="range" id="v-nuit-ecart" min="0" max="5" step="0.5" data-nuit="ecart"><output data-sortie="nuitEcart"></output></div>
+            </div>
+            <p class="aide" style="margin:6px 0 0">Débits en volumes de maison par heure. Fenêtres « ouvertes » ≈ 3 vol/h, « traversantes » ≈ 8 vol/h : ordres de grandeur (H). L'air neuf est pris à la température extérieure (pas de puits canadien ni de double flux pour l'instant).</p>
+          </div>
+        </details>
+
         <div class="barre-boutons pas-impression" style="margin-top:10px">
           <button type="button" class="bouton discret" id="btn-projet-exemple">Revenir à la maison d'exemple</button>
         </div>
@@ -105,6 +122,8 @@
         <div class="carte carte-3d" id="maison3d"></div>
         <div class="barre-soleil" id="barre-soleil"></div>
         <div class="tuiles tuiles-3d" id="chiffres-maison"></div>
+        <div class="tuiles tuiles-3d tuiles-confort" id="chiffres-confort"></div>
+        <div id="confort-projet"></div>
         <div id="soleil-projet"></div>
       </div>
 
@@ -265,7 +284,7 @@
   <!-- ===================== ONGLET MÉTHODE ===================== -->
   <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
     <div class="carte methode">
-      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute. <b>Chapitre 2</b> (sections 20 à 27) : la météo, le soleil sur chaque paroi et toute la chaleur qui entre dans la maison.</p>
+      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute. <b>Chapitre 2</b> (sections 20 à 27) : la météo, le soleil sur chaque paroi et toute la chaleur qui entre dans la maison. <b>Chapitre 3</b> (sections 28 à 35) : le modèle horaire 5R1C, la température qu'il fait dedans heure par heure.</p>
       <h2>1. Ce qu'on cherche</h2>
       <p>L'hiver, on veut savoir <b>combien</b> de chaleur s'en va : c'est U, un calcul en <b>régime permanent</b> (on suppose que les températures ne bougent pas). L'été, la question change : dehors, la température <b>monte et descend chaque jour</b> et le soleil chauffe les façades. Une paroi lourde ne laisse pas passer cette onde tout de suite : elle en <b>stocke</b> une partie, la <b>retarde</b> et l'<b>écrase</b>. Deux murs de même U peuvent donc donner des pièces très différentes l'été.</p>
       <p>Cette étape calcule, pour une paroi décrite couche par couche :</p>
@@ -648,11 +667,128 @@ Fenêtre Ouest de la maison d'exemple : 3 m², g = 0,6
       </ul>
       <p><b>Et ensuite (étape 3).</b> On sait maintenant, heure par heure, combien de watts entrent. Le modèle horaire 5R1C dira <b>quelle température</b> il fera dedans : la chaleur qui entre, moins celle que les parois et l'air évacuent, stockée en partie dans la masse (Cm, chapitre 1 bis).</p>
 
-      <h2>28. Teste-toi</h2>
+      <h2>28. Ce qu'on cherche maintenant : la température dedans</h2>
+      <p>Le chapitre 2 donne, heure par heure, les watts qui <b>entrent</b> : soleil par les vitres, un peu par les murs et le toit, occupants et appareils. Mais une maison n'est pas un sac qu'on remplit : à mesure qu'elle chauffe, elle <b>perd</b> plus vers dehors (parois, vitres, air renouvelé), et elle <b>range</b> une partie de la chaleur dans sa masse (dalles, murs lourds), qu'elle rendra la nuit. La température dedans est le résultat de cette bagarre, à chaque heure.</p>
+      <p>Pourquoi <b>trois</b> températures et pas une ? Parce qu'on ne ressent pas la même chose selon ce qu'on touche. Assis dans une pièce, on échange avec l'<b>air</b> (convection) et, par rayonnement infrarouge, avec les <b>surfaces</b> qui nous entourent (murs, plafond, sol, vitres). Un mur en pierre à 24 °C dans une pièce dont l'air est à 30 °C « pompe » de la chaleur à notre peau : on a moins chaud que le thermomètre ne le dit. La <b>température opérative</b> mélange les deux : θ<sub>op</sub> ≈ 0,3 θ<sub>air</sub> + 0,7 θ<sub>surfaces</sub> dans l'annexe C de la NF EN ISO 13790 (H) (la NF EN ISO 7726 propose ½ – ½ pour un air calme : la différence est petite tant que l'air et les surfaces restent proches). Et derrière les surfaces, il y a la <b>masse</b> : le cœur des parois, qui se charge lentement le jour et se vide la nuit. Trois températures, donc : θ<sub>air</sub>, θ<sub>s</sub>, θ<sub>m</sub>.</p>
+      <p>On pourrait calculer chaque paroi couche par couche, comme le labo du chapitre 1 ter (c'est prévu à l'étape 8). Le modèle <b>5R1C</b> de la NF EN ISO 13790:2008 (annexe C, méthode horaire simplifiée ; reprise comme méthode simplifiée dans la NF EN ISO 52016-1 (H : à vérifier)) fait un pari plus simple : <b>toute la maison tient dans un circuit de 5 résistances et 1 condensateur</b>. C'est le modèle qu'utilisent beaucoup de moteurs réglementaires simplifiés, et il suffit pour classer des variantes et comprendre ce qui pèse.</p>
+
+      <h2>29. Le circuit : 5 conductances et 1 capacité</h2>
+      <p>L'analogie électrique est exacte : une température est un potentiel (des volts), un flux de chaleur est un courant (des ampères), une <b>conductance</b> H en W/K est l'inverse d'une résistance (« combien de watts passent pour 1 °C d'écart »), et une <b>capacité</b> C en J/K est un condensateur (« combien de joules il faut pour monter de 1 °C »). Le circuit :</p>
+      <div class="schema-paroi">
+        <svg class="schema-svg" viewBox="0 0 640 260" role="img" aria-label="Schéma du circuit 5R1C">
+          <defs><g id="res"><path d="M0 0 l6 -7 l8 14 l8 -14 l8 14 l8 -14 l8 14 l6 -7" fill="none" stroke="currentColor" stroke-width="2"/></g></defs>
+          <g font-family="var(--police)" font-size="13" fill="var(--encre)">
+            <line x1="40" y1="40" x2="600" y2="40" stroke="var(--encre-3)" stroke-width="2" stroke-dasharray="6 4"/>
+            <text x="320" y="28" text-anchor="middle" font-weight="700">Dehors θe  (et l'air soufflé θsup = θe)</text>
+            <!-- Htr,em : dehors → masse -->
+            <line x1="110" y1="40" x2="110" y2="90" stroke="var(--encre)" stroke-width="2"/><g transform="translate(110 90) rotate(90)" color="var(--encre)"><use href="#res"/></g><line x1="110" y1="142" x2="110" y2="170" stroke="var(--encre)" stroke-width="2"/>
+            <text x="122" y="120">Htr,em</text><text x="122" y="135" fill="var(--encre-2)" font-size="11">opaque, côté dehors</text>
+            <!-- Htr,w : dehors → surfaces -->
+            <line x1="320" y1="40" x2="320" y2="90" stroke="var(--encre)" stroke-width="2"/><g transform="translate(320 90) rotate(90)" color="var(--encre)"><use href="#res"/></g><line x1="320" y1="142" x2="320" y2="170" stroke="var(--encre)" stroke-width="2"/>
+            <text x="332" y="120">Htr,w</text><text x="332" y="135" fill="var(--encre-2)" font-size="11">les vitres</text>
+            <!-- Hve : dehors → air -->
+            <line x1="540" y1="40" x2="540" y2="90" stroke="var(--encre)" stroke-width="2"/><g transform="translate(540 90) rotate(90)" color="var(--encre)"><use href="#res"/></g><line x1="540" y1="142" x2="540" y2="170" stroke="var(--encre)" stroke-width="2"/>
+            <text x="552" y="120">Hve</text><text x="552" y="135" fill="var(--encre-2)" font-size="11">l'air renouvelé</text>
+            <!-- barre des nœuds -->
+            <line x1="110" y1="170" x2="150" y2="170" stroke="var(--encre)" stroke-width="2"/><g transform="translate(150 170)" color="var(--encre)"><use href="#res"/></g><line x1="202" y1="170" x2="320" y2="170" stroke="var(--encre)" stroke-width="2"/>
+            <text x="176" y="196" text-anchor="middle">Htr,ms</text>
+            <line x1="320" y1="170" x2="400" y2="170" stroke="var(--encre)" stroke-width="2"/><g transform="translate(400 170)" color="var(--encre)"><use href="#res"/></g><line x1="452" y1="170" x2="540" y2="170" stroke="var(--encre)" stroke-width="2"/>
+            <text x="426" y="196" text-anchor="middle">Htr,is</text>
+            <!-- nœuds -->
+            <circle cx="110" cy="170" r="7" fill="var(--accent)"/><text x="110" y="222" text-anchor="middle" font-weight="700">θm</text><text x="110" y="238" text-anchor="middle" font-size="11" fill="var(--encre-2)">la masse</text>
+            <circle cx="320" cy="170" r="7" fill="var(--accent)"/><text x="320" y="222" text-anchor="middle" font-weight="700">θs</text><text x="320" y="238" text-anchor="middle" font-size="11" fill="var(--encre-2)">les surfaces</text>
+            <circle cx="540" cy="170" r="7" fill="var(--accent)"/><text x="540" y="222" text-anchor="middle" font-weight="700">θair</text><text x="540" y="238" text-anchor="middle" font-size="11" fill="var(--encre-2)">l'air</text>
+            <!-- Cm -->
+            <line x1="60" y1="170" x2="110" y2="170" stroke="var(--encre)" stroke-width="2"/><line x1="60" y1="156" x2="60" y2="184" stroke="var(--encre)" stroke-width="3"/><line x1="48" y1="156" x2="48" y2="184" stroke="var(--encre)" stroke-width="3"/><text x="54" y="208" text-anchor="middle" font-weight="700">Cm</text>
+            <!-- apports -->
+            <text x="110" y="100" text-anchor="end" fill="var(--gr-1)" font-weight="700" transform="translate(-14 60)">Φm ↓</text>
+            <text x="320" y="160" text-anchor="end" fill="var(--gr-1)" font-weight="700" transform="translate(-14 0)">Φst ↓</text>
+            <text x="540" y="160" text-anchor="end" fill="var(--gr-1)" font-weight="700" transform="translate(-14 0)">Φia ↓</text>
+          </g>
+        </svg>
+      </div>
+      <p>Lis-le de droite à gauche. L'<b>air</b> θ<sub>air</sub> est relié à dehors par la ventilation (H<sub>ve</sub>) et aux surfaces par H<sub>tr,is</sub>. Les <b>surfaces</b> θ<sub>s</sub> reçoivent le soleil, sont reliées à dehors par les vitres (H<sub>tr,w</sub>, qui n'ont pas de masse) et à la masse par H<sub>tr,ms</sub>. La <b>masse</b> θ<sub>m</sub> porte le seul condensateur, C<sub>m</sub>, et touche dehors à travers le reste des parois opaques, H<sub>tr,em</sub>. Cinq conductances, une capacité : 5R1C. Les apports Φ arrivent sur les trois nœuds (section 31).</p>
+
+      <h2>30. Les cinq conductances, une par une</h2>
+      <p><b>H<sub>ve</sub>, l'air renouvelé.</b> Un débit d'air q (m³/h) à la température de dehors remplace de l'air à la température de dedans : il emporte ρ·c·q·(θ<sub>air</sub> − θ<sub>e</sub>). Avec ρ·c = 1,2 kg/m³ × 1 000 J/(kg·K) = 1 200 J/(m³·K) et q = n × V (n en volumes par heure) :</p>
+      <div class="formule">Hve = 1 200 / 3 600 × n × V = n × V / 3     [J/(m³·K)] × [m³/h] / [s/h] = W/K
+Maison d'exemple : (0,5 VMC + 4/20 infiltrations) = 0,7 vol/h × 216 m³ / 3 = 50,4 W/K   (presque autant que les murs + le toit !)
+Fenêtres ouvertes la nuit, + 3 vol/h : 3,7 × 216 / 3 = 266 W/K</div>
+      <p>Le débit se compose de la <b>VMC</b> (débit hygiénique, 0,4 à 0,6 vol/h pour un logement (H)), des <b>infiltrations</b> (l'air qui passe par les défauts d'étanchéité : on les estime à n<sub>50</sub> / 20, la « règle du 1/20 » de Sherman (H), où n<sub>50</sub> est le renouvellement mesuré sous 50 Pa au test de la porte soufflante), et, si on ouvre les fenêtres la nuit, d'un débit de <b>surventilation</b> (1 à 8 vol/h selon l'ouverture, ordres de grandeur (H)). Règle d'ouverture (H) : entre deux heures choisies, seulement si la maison dépasse un seuil (24 °C) et si dehors est plus frais d'au moins 2 °C, l'heure d'avant. L'air neuf est pris à θ<sub>e</sub> (θ<sub>sup</sub> = θ<sub>e</sub>) : pas de double flux ni de puits canadien pour l'instant.</p>
+      <p><b>H<sub>tr,w</sub>, les vitres.</b> Σ U<sub>w</sub> × A<sub>w</sub>, comme au chapitre 1 bis. Une vitre n'a presque pas de masse : elle relie directement dehors aux surfaces de la pièce.</p>
+      <p><b>H<sub>tr,op</sub>, les parois opaques, coupé en deux.</b> Σ U × A des murs, du toit et du plancher bas (chapitre 1 bis). Mais la masse de ces parois est <em>au milieu</em> : la chaleur passe d'abord des surfaces à la masse (H<sub>tr,ms</sub>), puis de la masse à dehors (H<sub>tr,em</sub>). Deux conductances en série doivent redonner le total : 1/H<sub>tr,op</sub> = 1/H<sub>tr,ms</sub> + 1/H<sub>tr,em</sub>. L'annexe C fixe H<sub>tr,ms</sub> = 9,1 W/(m²·K) × A<sub>m</sub> (A<sub>m</sub> = surface de masse équivalente du chapitre 1, C<sub>m</sub>² / Σ κ²A) ; H<sub>tr,em</sub> en découle. 9,1 W/(m²·K) est de l'ordre de l'échange total (convection ≈ 3 + rayonnement ≈ 5,5) entre une surface intérieure et son environnement, « vu » depuis la masse (H). Comme H<sub>tr,ms</sub> est très grand (2 089 W/K pour la maison d'exemple), H<sub>tr,em</sub> ≈ H<sub>tr,op</sub>.</p>
+      <p><b>H<sub>tr,is</sub>, des surfaces à l'air.</b> 3,45 W/(m²·K) × A<sub>tot</sub>, avec A<sub>tot</sub> = 4,5 × A<sub>f</sub> : la surface totale de tout ce qui donne sur la pièce (sol + plafond = 2 A<sub>f</sub>, plus les murs et cloisons ≈ 2,5 A<sub>f</sub>), conventionnelle. 3,45 ≈ l'échange par convection entre une paroi et l'air, augmenté pour tenir compte du rayonnement entre surfaces ramené sur le nœud d'air (H). C'est une grosse conductance (1 242 W/K pour l'exemple) : l'air et les surfaces restent toujours proches, à un degré près.</p>
+      <p><b>Le sol sous la dalle (H).</b> Le plancher bas ne donne pas sur l'air extérieur mais sur la terre, qui reste proche de la <b>moyenne annuelle</b> (13 à 15 °C en France) et ne suit les saisons qu'amortie et en retard : la chaleur de l'été met des semaines à descendre. On prend θ<sub>sol</sub> = T<sub>moy,an</sub> + ½ × (écart de la moyenne mensuelle, un mois plus tôt) (H, inspiré de la NF EN ISO 13370). La masse « voit » alors un dehors mélangé : (U·A)<sub>sol</sub> à θ<sub>sol</sub>, le reste à θ<sub>e</sub>. À Toulouse en juillet, le sol est à ≈ 17 °C : le dallage est le seul « froid » gratuit de la maison l'été.</p>
+
+      <h2>31. Où va la chaleur qui entre ?</h2>
+      <p>Une lampe chauffe l'air autour d'elle (convection) et rayonne vers les murs ; un corps humain aussi ; le soleil, lui, traverse la vitre et tape le sol et les meubles : il ne chauffe <em>pas</em> l'air directement. L'annexe C partage donc :</p>
+      <div class="formule">Φia = 0,5 × Φint                                        dans l'air (moitié des apports internes)
+Φst = (1 − Am/Atot − Htr,w / (9,1 × Atot)) × (0,5 Φint + Φsol)    sur les surfaces légères
+Φm  = (Am/Atot) × (0,5 Φint + Φsol)                     directement dans la masse (part des surfaces lourdes)
+Le reste, Htr,w/(9,1 Atot) × (…), est ce que les vitres (sans masse) renvoient aussitôt dehors.</div>
+      <p>Φ<sub>sol</sub> regroupe tout le chapitre 2 : fenêtres, murs, toit (avec leur terme négatif de rayonnement vers le ciel). Dans la maison d'exemple, A<sub>m</sub>/A<sub>tot</sub> = 229,6 / 360 = 0,64 : les deux tiers de la chaleur rayonnée vont directement dans la masse. C'est ce qui lisse la journée.</p>
+
+      <h2>32. Le pas de temps : trois bilans, et le schéma de Crank-Nicolson</h2>
+      <p>À chaque heure, on écrit que <b>ce qui arrive à un nœud en repart</b> (les nœuds d'air et de surfaces n'ont pas de capacité) ou s'y stocke (la masse) :</p>
+      <div class="formule">Air       : Htr,is (θs − θair) + Hve (θe − θair) + Φia = 0
+Surfaces  : Htr,ms (θm − θs) + Htr,is (θair − θs) + Htr,w (θe − θs) + Φst = 0
+Masse     : Cm × dθm/dt = Φm + Htr,em (θe,op − θm) + Htr,ms (θs − θm)        [J/K × K/s = W]</div>
+      <p>La masse est la seule inconnue « avec mémoire ». On remplace la dérivée par une différence sur une heure (Δt = 3 600 s) et, pour être stable et précis, on évalue le second membre à la <b>température moyenne de l'heure</b>, (θ<sub>m,t</sub> + θ<sub>m,t−1</sub>)/2 : c'est le schéma de <b>Crank-Nicolson</b>, le même que le labo du chapitre 1 ter aurait pu utiliser, exact à l'ordre 2 en temps. Les deux autres équations se résolvent à la main : tout le circuit « à droite » de la masse se ramène à une seule conductance vers dehors,</p>
+      <div class="formule">H1 = 1 / (1/Hve + 1/Htr,is)          dehors → air → surfaces (en série)
+H2 = H1 + Htr,w                        + les vitres (en parallèle)
+H3 = 1 / (1/H2 + 1/Htr,ms)            … jusqu'à la masse
+Φmtot = Φm + Htr,em θe,op + H3 × [Φst + Htr,w θe + H1 (θe + Φia/Hve)] / H2
+θm,t = [ θm,t−1 × (Cm/3600 − ½(H3 + Htr,em)) + Φmtot ] / [ Cm/3600 + ½(H3 + Htr,em) ]
+puis θm = (θm,t + θm,t−1)/2 ;  θs = (Htr,ms θm + Φst + Htr,w θe + H1 (θe + Φia/Hve)) / (Htr,ms + Htr,w + H1) ;
+θair = (Htr,is θs + Hve θe + Φia) / (Htr,is + Hve) ;  θop = 0,3 θair + 0,7 θs</div>
+      <p>Dimensions : C<sub>m</sub>/3 600 est en J/K ÷ s/h = Wh/K, une « conductance par heure » : on compare bien des W/K entre eux. Si C<sub>m</sub>/3 600 est grand devant les H (maison lourde), θ<sub>m,t</sub> ≈ θ<sub>m,t−1</sub> : la masse bouge à peine d'une heure à l'autre. Si H<sub>ve</sub> = 0 (aucun air), le terme Φ<sub>ia</sub>/H<sub>ve</sub> est indéterminé ; on l'écrit H1/H<sub>ve</sub> = H<sub>tr,is</sub>/(H<sub>tr,is</sub> + H<sub>ve</sub>) et tout rentre dans l'ordre. Le code vérifie à chaque heure que les trois bilans bouclent (écart &lt; 10⁻⁶ W).</p>
+      <p><b>Deux résultats qu'on peut vérifier de tête.</b> En <b>régime permanent</b> (tout constant depuis longtemps, la masse ne stocke plus rien), la maison se comporte comme un seul H : θ ≈ θ<sub>e</sub> + Φ / (H<sub>tr,op</sub> + H<sub>tr,w</sub> + H<sub>ve</sub>). Pour l'exemple : 79 + 50 = 129 W/K ; 1 000 W d'apports donnent + 7,7 °C au-dessus de dehors. Et quand les apports cessent, la masse rejoint dehors en <b>exponentielle</b> de constante de temps τ = (C<sub>m</sub>/3 600) / (H<sub>tr,em</sub> + H3) : 20 h pour la maison d'exemple (légère), 2 à 3 jours pour une maison lourde et isolée. Au bout de 3 τ, il reste 5 % de l'écart : c'est pour ça qu'on calcule mai « pour rien », avant de regarder juin → septembre (mise en régime).</p>
+
+      <h2>33. Exemple refait à la main : une heure</h2>
+      <p>Une maison de test simple, pour suivre les nombres : A<sub>f</sub> = 100 m², V = 250 m³, C<sub>m</sub> = 10 MJ/K, A<sub>m</sub> = 250 m², vitres 21 W/K, murs 30 + toit 15 + sol 30 W/K, 0,7 vol/h. Dehors et sol à 30 °C, masse à 24 °C à la fin de l'heure précédente, Φ<sub>int</sub> = 500 W, Φ<sub>sol</sub> = 1 500 W. Les tests refont ce calcul au millième.</p>
+      <div class="formule">Atot = 4,5 × 100 = 450 m²      Htr,is = 3,45 × 450 = 1 552,5 W/K      Htr,ms = 9,1 × 250 = 2 275 W/K
+Htr,op = 75 W/K  →  Htr,em = 1 / (1/75 − 1/2 275) = 77,557 W/K          Hve = 0,7 × 250 / 3 = 58,333 W/K
+H1 = 1/(1/58,333 + 1/1 552,5) = 56,221      H2 = 56,221 + 21 = 77,221      H3 = 1/(1/77,221 + 1/2 275) = 74,686
+Φia = 250 W      Φm = 250/450 × 1 750 = 972,222 W      Φst = (1 − 0,5556 − 21/4 095) × 1 750 = 768,803 W
+Φmtot = 972,222 + 77,557 × 30 + 74,686 × [768,803 + 21 × 30 + 56,221 × (30 + 250/58,333)] / 77,221 = 6 516,10 W
+Cm/3600 = 2 777,78 Wh/K ;  ½(H3 + Htr,em) = 76,12
+θm,t = (24 × (2 777,78 − 76,12) + 6 516,10) / (2 777,78 + 76,12) = 25,003 °C      θm (moyenne) = 24,501 °C
+θs = (2 275 × 24,501 + 3 326,38) / (2 275 + 21 + 56,221) = 25,111 °C
+θair = (1 552,5 × 25,111 + 58,333 × 30 + 250) / (1 552,5 + 58,333) = 25,443 °C
+θop = 0,3 × 25,443 + 0,7 × 25,111 = 25,21 °C
+Bilan : apports 2 000 + ventilation 266 + vitres 103 + opaques 426 = 2 795 W = ce que la masse stocke (2 786) + ce que les vitres renvoient (9).</div>
+      <p>Lecture : la masse monte d'un degré en une heure (de 24 à 25 °C), les surfaces et l'air la suivent à un demi-degré près. Tout ce qui entre, apports et chaleur de dehors, finit dans la masse : c'est elle qui « encaisse ». Sur la maquette, ouvre « L'heure affichée calculée pas à pas » : c'est exactement ce calcul, avec les nombres de ta maison.</p>
+
+      <h2>34. La maison d'exemple à Toulouse, et ce qu'on apprend</h2>
+      <div class="formule">Circuit : Htr,is = 1 242 ; Htr,ms = 2 089 ; Htr,op = 60,9 → Htr,em = 62,7 ; Htr,w = 18,2 ; Hve = 50,4 (0,7 vol/h) W/K ; Cm = 9,31 MJ/K ; τ = 20 h
+Juin → septembre (année type, été normal)       pic opérative   moyenne    heures > 28 °C
+  volets + fenêtres ouvertes la nuit (3 vol/h)     33,3 °C        24,8 °C      ≈ 330 h
+  volets, fenêtres fermées la nuit                 34,6 °C        26,1 °C      ≈ 780 h
+  (dehors : pic 38,8 °C, moyenne 21,9 °C)</div>
+      <ul>
+        <li><b>La maison est plus chaude que dehors en moyenne</b> (+ 3 à 4 °C) : les apports internes (1 092 kWh) et le soleil s'ajoutent, et une maison bien isolée garde cette chaleur. L'isolation est une qualité l'hiver, un piège l'été si on ne l'aère pas.</li>
+        <li><b>Ouvrir la nuit vaut 1,3 °C sur le pic et 1,3 °C sur la moyenne</b>, soit deux fois moins d'heures au-dessus de 28 °C. C'est le levier gratuit : il faut un air extérieur frais la nuit (ce que Toulouse a) et une masse pour stocker ce froid.</li>
+        <li><b>Le pic ne tombe pas le jour le plus chaud dehors</b> mais au bout de quelques jours chauds de suite : la masse se charge jour après jour (τ = 20 h, la nuit ne suffit plus à la vider). Regarde la semaine la plus chaude : la courbe dedans monte en escalier.</li>
+        <li><b>L'opérative est 0,2 °C sous l'air</b> dans cette maison légère : les surfaces ne sont presque pas plus fraîches que l'air. Dans une maison en pierre, l'écart peut atteindre 2 °C, et c'est ce qu'on ressent.</li>
+        <li><b>« Et si la maison était 4 × plus lourde ? »</b> (bouton sous le graphique) : le pic descend de 3 °C, la moyenne ne bouge pas. L'inertie <b>écrête</b>, elle ne <b>refroidit</b> pas : seule l'évacuation (ventilation, nuit) fait baisser la moyenne. Les deux ensemble (masse + nuit) sont la recette des maisons du Sud.</li>
+      </ul>
+
+      <h2>35. Comment on sait que c'est juste, et les limites (H)</h2>
+      <ul>
+        <li><b>Bilan d'énergie</b> : à chaque heure de chaque simulation, les trois bilans de la section 32 bouclent à mieux que 10⁻⁶ W (vérifié par les tests sur un été complet avec surventilation).</li>
+        <li><b>Régime permanent</b> : avec des entrées constantes, le calcul retombe sur la solution exacte du circuit (trois équations résolues à la main par élimination de Gauss), et sur θ<sub>e</sub> + Φ/H à 0,6 °C près.</li>
+        <li><b>Échelon</b> : sans apport, la masse rejoint dehors en exponentielle exacte de constante de temps (C<sub>m</sub>/3 600)/(H<sub>tr,em</sub> + H3) ; le rapport d'une heure à l'autre vaut (1 − a)/(1 + a) avec a = 1/(2τ), à 10⁻⁹ près.</li>
+        <li><b>BESTEST (ANSI/ASHRAE 140, cas 600FF et 900FF en évolution libre)</b> : la maison de référence (8 × 6 × 2,7 m, 12 m² de vitrage Sud, 200 W, 0,5 vol/h ; légère pour 600, murs en blocs de béton et dalle pour 900) est recalculée avec les chapitres 1 (κ des parois), 2 (soleil) et 3. La météo officielle (DRYCOLD, Denver) n'étant pas publique, on utilise l'<b>année type PVGIS de Denver</b> (H) : la comparaison est <b>indicative</b>. Résultat : 600FF max 66 °C / min −18 °C / moyenne 25,6 °C, dans les plages publiées des logiciels de référence (64,9 à 75,1 / −18,8 à −15,6 / 24,2 à 27,4) ; 900FF max 48 °C / min −7 °C / moyenne 25,7 °C, contre 41,8 à 46,4 / −6,4 à −1,6 / 24,5 à 27,5 : la moyenne est dans la plage, les extrêmes sont <b>un peu trop marqués (≈ 1,5 °C)</b>, ce qui est attendu d'un modèle à un seul nœud de masse, et la météo diffère. Les plages publiées sont rapportées de mémoire (H) : à vérifier dans le rapport IEA BESTEST (NREL, 1995) ou l'annexe B8 de l'ASHRAE 140.</li>
+        <li><b>Sens physiques</b> : une maison lourde écrase les extrêmes (BESTEST 900 contre 600 : − 18 °C sur le max), sans volets le pic monte de plus de 2 °C, ouvrir la nuit refroidit, mai suffit à oublier la température de départ.</li>
+      </ul>
+      <p><b>Limites (H)</b> : une seule zone (pas de pièce plus chaude que les autres, pas d'étage sous toit) ; une seule masse (les parois sont des conductances pures : pas de déphasage « visible » heure par heure, ce sera l'étape 8) ; coefficients 3,45 / 9,1 / 4,5 / 0,3–0,7 de l'annexe C non vérifiés dans le texte ; sol sous la dalle, infiltrations n<sub>50</sub>/20, débits et règle d'ouverture des fenêtres : hypothèses ; air neuf à la température extérieure (pas de double flux, de puits canadien ni de brasseur d'air) ; pas de chauffage ni de climatisation (évolution libre) ; année type = été normal, pas de canicule. Le combles perdu n'est pas une zone tampon (chapitre 2).</p>
+      <p><b>Et ensuite (étape 4).</b> On a maintenant 3 672 températures opératives par été. Il reste à les <b>juger</b> : heures au-dessus de 28 °C, degrés-heures, confort adaptatif (la température de confort suit la température extérieure des jours précédents), PMV / PPD, Givoni, nuits chaudes, et la note sur 10 dont on verra chaque point.</p>
+
+      <h2>36. Teste-toi</h2>
       <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
       <div id="teste-toi"></div>
 
-      <h2>29. Où est le code</h2>
+      <h2>37. Où est le code</h2>
       <ul>
         <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
         <li><code>calcul/calcul-batiment.js</code> : chapitre 1 bis, la maison (surfaces, H, inertie).</li>
@@ -666,10 +802,13 @@ Fenêtre Ouest de la maison d'exemple : 3 m², g = 0,6
         <li><code>donnees/confort-materiaux.js</code> : les matériaux, parois et local d'exemple (publics).</li>
         <li><code>calcul/calcul-soleil.js</code> : chapitre 2, la météo, le soleil, les apports (fenêtres, parois, occupants).</li>
         <li><code>affichage/soleil.js</code> : le soleil sur la maquette, la barre jour · heure, les cartes du soleil (aucun calcul).</li>
+        <li><code>calcul/calcul-5r1c.js</code> : chapitre 3, le circuit 5R1C, le pas de Crank-Nicolson, le sol, la ventilation, les entrées depuis la maison.</li>
+        <li><code>affichage/confort.js</code> : la température dedans (tuiles, semaine la plus chaude, labo des réservoirs, « et si », l'heure pas à pas ; aucun calcul).</li>
+        <li><code>tests/confort-5r1c.test.js</code> : la validation du modèle horaire (bilan, analytique, échelon, exemples, BESTEST 600FF / 900FF indicatif).</li>
         <li><code>donnees/confort-meteo.js</code> et <code>donnees/meteo/*.js</code> : les 10 villes (PVGIS) ; <code>donnees/meteo/preparer-meteo.js</code> les fabrique.</li>
         <li><code>tests/confort-parois.test.js</code> : la validation (différences finies, exemple à la main, limites).</li>
         <li><code>tests/confort-soleil.test.js</code> : la validation du soleil (NOAA, PVGIS, heure type).</li>
-        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>, <code>docs/etape-1ter.md</code>, <code>docs/etape-2.md</code>.</li>
+        <li>Fiches de compréhension : <code>docs/etape-1.md</code>, <code>docs/etape-1bis.md</code>, <code>docs/etape-1ter.md</code>, <code>docs/etape-2.md</code>, <code>docs/etape-3.md</code>.</li>
       </ul>
     </div>
   </section>
@@ -735,6 +874,8 @@ Fenêtre Ouest de la maison d'exemple : 3 m², g = 0,6
       <div class="defilement"><table id="table-classes"></table></div>
       <h3 style="margin-top:14px">Soleil et apports (chapitre 2) <span class="badge exemple">(H) à vérifier</span></h3>
       <div class="defilement"><table id="table-soleil"></table></div>
+      <h3 style="margin-top:14px">Modèle horaire 5R1C et air (chapitre 3) <span class="badge exemple">(H) à vérifier</span></h3>
+      <div class="defilement"><table id="table-5r1c"></table></div>
     </div>
   </section>
 </main>
@@ -743,23 +884,25 @@ Fenêtre Ouest de la maison d'exemple : 3 m², g = 0,6
   Outil personnel d'aide à l'audit énergétique. Ordres de grandeur pour comprendre et comparer des variantes ; la STD reste la référence.
 </footer>
 
-<script src="commun/commun.js?v=20261111"></script>
-<script src="donnees/confort-materiaux.js?v=20261111"></script>
-<script src="donnees/confort-projet.js?v=20261111"></script>
-<script src="donnees/confort-meteo.js?v=20261111"></script>
-<script src="calcul/calcul-parois.js?v=20261111"></script>
-<script src="calcul/calcul-batiment.js?v=20261111"></script>
-<script src="calcul/calcul-transitoire.js?v=20261111"></script>
-<script src="calcul/calcul-soleil.js?v=20261111"></script>
-<script src="calcul/calcul.js?v=20261111"></script>
-<script src="affichage/schemas.js?v=20261111"></script>
-<script src="affichage/graphiques.js?v=20261111"></script>
-<script src="affichage/exercices.js?v=20261111"></script>
-<script src="donnees/lexique.js?v=20261111"></script>
-<script src="affichage/maison3d.js?v=20261111"></script>
-<script src="affichage/interface.js?v=20261111"></script>
-<script src="affichage/labo.js?v=20261111"></script>
-<script src="affichage/projet.js?v=20261111"></script>
-<script src="affichage/soleil.js?v=20261111"></script>
+<script src="commun/commun.js?v=20261112"></script>
+<script src="donnees/confort-materiaux.js?v=20261112"></script>
+<script src="donnees/confort-projet.js?v=20261112"></script>
+<script src="donnees/confort-meteo.js?v=20261112"></script>
+<script src="calcul/calcul-parois.js?v=20261112"></script>
+<script src="calcul/calcul-batiment.js?v=20261112"></script>
+<script src="calcul/calcul-transitoire.js?v=20261112"></script>
+<script src="calcul/calcul-soleil.js?v=20261112"></script>
+<script src="calcul/calcul-5r1c.js?v=20261112"></script>
+<script src="calcul/calcul.js?v=20261112"></script>
+<script src="affichage/schemas.js?v=20261112"></script>
+<script src="affichage/graphiques.js?v=20261112"></script>
+<script src="affichage/exercices.js?v=20261112"></script>
+<script src="donnees/lexique.js?v=20261112"></script>
+<script src="affichage/maison3d.js?v=20261112"></script>
+<script src="affichage/interface.js?v=20261112"></script>
+<script src="affichage/labo.js?v=20261112"></script>
+<script src="affichage/projet.js?v=20261112"></script>
+<script src="affichage/soleil.js?v=20261112"></script>
+<script src="affichage/confort.js?v=20261112"></script>
 </body>
 </html>

@@ -419,3 +419,49 @@ body.appli { background: var(--fond); }
 .spark { width: 72px; height: 20px; display: block; }
 .spark path { fill: none; stroke: var(--gr-1); stroke-width: 1.4; }
 .facade-casquette { grid-area: casq; }
+
+/* ----- Étape 3 : la température dedans (5R1C) ----- */
+.pas-sous { display: grid; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.pas-sous[hidden] { display: none; }
+.tuiles-confort:empty { display: none; }
+.tuiles-confort { margin-top: 8px; }
+.confort-carte { margin-top: 12px; }
+.m-dedans rect { fill: var(--surface); fill-opacity: .92; stroke: var(--bord-fort); }
+.m-dedans text { font: 650 12.5px var(--police); fill: var(--encre-2); }
+.m-dedans tspan { font-weight: 800; fill: var(--encre); }
+.graphique .gr-ligne.gr-essai { stroke: var(--gr-1); stroke-dasharray: 7 4; stroke-width: 1.6; opacity: .8; }
+.graphique .gr-point.gr-essai { fill: var(--gr-1); }
+.gr-cle.gr-essai { border-top-style: dashed; border-color: var(--gr-1); }
+.confort-curseur { stroke: #f2a20c; stroke-width: 1.6; stroke-dasharray: 3 2; }
+.confort-essai { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 4px; }
+.confort-essai .segments { flex: 0 1 auto; flex-wrap: wrap; max-width: 100%; }
+.confort-essai .segments button { white-space: nowrap; flex: 1 1 auto; }
+.confort-essai .aide { flex: 1 1 220px; margin: 0; }
+.confort-labo { border-radius: 16px; overflow: hidden; border: 1px solid var(--bord); background: var(--surface-2); }
+.confort-labo-svg { display: block; width: 100%; height: auto; }
+.cl-grad { stroke: var(--bord); stroke-dasharray: 2 4; }
+.cl-grad-txt { font: 600 10px var(--police); fill: var(--encre-3); }
+.cl-cuve-fond { fill: var(--surface); }
+.cl-cuve-bord { fill: none; stroke: var(--encre); stroke-opacity: .5; stroke-width: 1.5; }
+.cl-niveau { transition: y .25s, height .25s; }
+.cl-nom { font: 700 12px var(--police); fill: var(--encre); }
+.cl-temp { font: 800 13px var(--police); fill: var(--encre); font-variant-numeric: tabular-nums; }
+.cl-tuyau { fill: none; stroke: var(--bord-fort); stroke-linecap: round; }
+.cl-eau { fill: none; stroke: var(--froid); stroke-linecap: butt; stroke-dasharray: 8 16; animation: cl-coule 1s linear infinite; }
+@keyframes cl-coule { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+.cl-tuyau-txt { font: 700 10.5px var(--police); fill: var(--encre); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3; }
+.cl-tuyau-val { font: 600 10px var(--police); fill: var(--encre-2); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3; font-variant-numeric: tabular-nums; }
+.cl-pluie line { stroke-width: 2; stroke-linecap: round; animation: cl-tombe .7s linear infinite; }
+.cl-int line { stroke: var(--gr-2); }
+.cl-sol line { stroke: #f2a20c; }
+@keyframes cl-tombe { from { transform: translateY(-8px); opacity: 0; } 30% { opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
+.cl-pluie-txt { font: 650 10.5px var(--police); fill: var(--encre-2); }
+.confort-noeuds { display: grid; gap: 6px; }
+.confort-noeud { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: .84rem; }
+.confort-noeud i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.confort-noeud b { font-variant-numeric: tabular-nums; }
+.confort-histo { display: flex; align-items: flex-end; gap: 3px; height: 70px; }
+.confort-barre { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.confort-barre i { display: block; width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; }
+.confort-barre span { font-size: .62rem; color: var(--encre-3); margin-top: 2px; }
+@media (prefers-reduced-motion: reduce) { .cl-eau, .cl-pluie line { animation: none; } }

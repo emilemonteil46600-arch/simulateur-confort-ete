@@ -11,6 +11,7 @@
   const B = global.ConfortBatiment || (typeof require === 'function' ? require('../calcul/calcul-batiment.js') : null);
   const Tr = global.ConfortTransitoire || (typeof require === 'function' ? require('../calcul/calcul-transitoire.js') : null);
   const So = global.ConfortSoleil || (typeof require === 'function' ? require('../calcul/calcul-soleil.js') : null);
+  const R5 = global.ConfortCinqR1C || (typeof require === 'function' ? require('../calcul/calcul-5r1c.js') : null);
   // Un soleil « à la main » (hauteur, azimut) avec son vecteur s, pour les exercices.
   const soleilA = function (hauteur, azimut) {
     const r = Math.PI / 180;
@@ -60,6 +61,21 @@
       enonce: 'En juillet, à Toulouse, quelle façade verticale reçoit le plus de soleil sur la journée ?',
       choix: ['l\'Ouest (ou l\'Est)', 'le Sud', 'le Nord'], bonne: 0,
       correction: 'En été, à midi, le soleil est très haut (≈ 68° fin juin) : il arrive en biais sur une façade Sud (cos θ petit).\nLe matin et l\'après-midi, il est bas et presque en face des façades Est et Ouest : cos θ grand, pendant des heures.\nRésultat de l\'année type : en juillet, l\'Ouest reçoit nettement plus que le Sud. Et l\'Ouest prend son soleil au moment le plus chaud.'
+    },
+    {
+      enonce: 'Dans le circuit 5R1C, lequel de ces trois nœuds a une capacité (un « réservoir » de chaleur) ?',
+      choix: ['la masse θm seulement', 'l\'air θair seulement', 'les trois'], bonne: 0,
+      correction: 'Un seul condensateur, Cm, sur le nœud de masse. L\'air (ρ·c·V ≈ 0,3 MJ/K, 3 % de Cm) et les surfaces sont traités sans capacité :\nleurs bilans se résolvent à chaque heure sans mémoire. Seule la masse « se souvient » de l\'heure d\'avant (schéma de Crank-Nicolson).'
+    },
+    {
+      enonce: 'Une maison lourde (Cm × 4) contre la même maison légère, même ventilation, même soleil. Sur l\'été, qu\'est-ce qui change ?',
+      choix: ['le pic baisse, la moyenne ne bouge presque pas', 'le pic et la moyenne baissent de la même façon', 'rien : l\'énergie qui entre est la même'], bonne: 0,
+      correction: 'L\'inertie écrête : elle étale la chaleur du jour sur la nuit, donc le pic descend (− 3 °C pour la maison d\'exemple).\nMais elle n\'évacue rien : sur une saison, le bilan entrées − sorties ne dépend que des H et des températures, donc la moyenne ne bouge pas.\nPour baisser la moyenne, il faut évacuer : ventiler la nuit, protéger du soleil.'
+    },
+    {
+      enonce: 'Pourquoi la température <b>opérative</b> plutôt que celle de l\'air pour juger du confort ?',
+      choix: ['parce qu\'on échange aussi par rayonnement avec les murs', 'parce que l\'air est impossible à mesurer', 'parce qu\'elle est toujours plus basse'], bonne: 0,
+      correction: 'Assis dans une pièce, on perd (ou gagne) de la chaleur par convection avec l\'air ET par rayonnement infrarouge avec les surfaces autour.\nθop ≈ 0,3 θair + 0,7 θs dans l\'annexe C (½ – ½ dans la NF EN ISO 7726 pour un air calme). Un mur en pierre frais rafraîchit même si l\'air est chaud.'
     },
     {
       enonce: 'Une casquette de 60 cm au-dessus d\'une fenêtre : où est-elle la plus efficace en été ?',
@@ -217,6 +233,43 @@
           enonce: 'Une baie de <b>' + nb(A, 1) + ' m²</b> (cadre 30 %, Fw = 0,9), vitrage <b>g = ' + nb(g, 2) + '</b>, reçoit <b>' + nb(I) + ' W/m²</b> ; protection : ' + prot.nom + ', baissée. Combien de watts entrent ?',
           correction: 'Φ = I × A × (1 − Ff) × g × Fw × Fc\n= ' + nb(I) + ' × ' + nb(A, 1) + ' × 0,7 × ' + nb(g, 2) + ' × 0,9 × ' + nb(prot.Fc, 2) + ' = ' + nb(a.flux) + ' W\n' +
             '(soit l\'équivalent de ' + nb(a.flux / 75, 1) + ' personnes au repos, à 75 W chacune)'
+        };
+      }
+    },
+    {
+      titre: 'L\'air renouvelé : Hve = ρ·c·n·V',
+      generer: function (h) {
+        const n = BAO.tirer(h, 0.3, 1.5, 0.1), V = BAO.tirer(h, 100, 400, 10);
+        const reponse = R5.conductanceVentilation(n, V);
+        return {
+          type: 'nombre', unite: 'W/K', tolerance: Math.max(0.5, reponse * 0.02), reponse: reponse,
+          enonce: 'Une maison de <b>' + nb(V) + ' m³</b> renouvelle son air <b>' + nb(n, 1) + ' fois par heure</b> (ρ·c de l\'air = 1 200 J/(m³·K)). Quelle conductance Hve cela fait-il ?',
+          correction: 'Hve = ρ·c × n × V = 1 200 J/(m³·K) × ' + nb(n, 1) + ' vol/h × ' + nb(V) + ' m³ / 3 600 s/h\n    = ' + nb(n * V) + ' m³/h / 3 = ' + nb(reponse, 1) + ' W/K\n(À comparer au H des parois : souvent du même ordre. L\'air compte autant que les murs.)'
+        };
+      }
+    },
+    {
+      titre: 'Régime permanent : θ = θe + Φ / H',
+      generer: function (h) {
+        const te = BAO.tirer(h, 24, 34, 1), H = BAO.tirer(h, 60, 200, 10), phi = BAO.tirer(h, 500, 3000, 100);
+        const c = { Htr_op: H * 0.6, Htr_w: H * 0.15 };
+        const reponse = R5.regimePermanent(c, te, H * 0.25, phi).theta;
+        return {
+          type: 'nombre', unite: '°C', tolerance: 0.2, reponse: reponse,
+          enonce: 'Dehors il fait <b>' + nb(te) + ' °C</b> depuis des jours. La maison perd <b>' + nb(H) + ' W/K</b> en tout (parois + vitres + air) et reçoit <b>' + nb(phi) + ' W</b> d\'apports constants. Vers quelle température se stabilise-t-elle ?',
+          correction: 'En régime permanent, la masse ne stocke plus rien : ce qui entre (Φ) = ce qui sort (H × (θ − θe)).\nθ = θe + Φ / H = ' + nb(te) + ' + ' + nb(phi) + ' / ' + nb(H) + ' = ' + nb(te) + ' + ' + nb(phi / H, 2) + ' = ' + nb(reponse, 1) + ' °C\n(Le 5R1C donne la même chose en moyenne ; l\'air est un peu au-dessus, la masse un peu en dessous.)'
+        };
+      }
+    },
+    {
+      titre: 'La constante de temps τ = Cm / (3 600 × H)',
+      generer: function (h) {
+        const Cm = BAO.tirer(h, 3, 40, 1), H = BAO.tirer(h, 50, 250, 10);
+        const reponse = Cm * 1e6 / 3600 / H;
+        return {
+          type: 'nombre', unite: 'h', tolerance: Math.max(0.3, reponse * 0.02), reponse: reponse,
+          enonce: 'Capacité <b>Cm = ' + nb(Cm) + ' MJ/K</b>, conductance totale vers dehors <b>' + nb(H) + ' W/K</b>. Quelle est la constante de temps τ (en heures) ? Au bout de 3 τ, il reste 5 % d\'un écart.',
+          correction: 'τ = Cm / H = ' + nb(Cm) + '·10⁶ J/K / ' + nb(H) + ' W/K = ' + nb(Cm * 1e6 / H) + ' s = ' + nb(reponse, 1) + ' h\n[J/K] / [W/K] = [J/W] = [s].  Après 3 τ ≈ ' + nb(3 * reponse) + ' h, la maison a oublié 95 % d\'un coup de chaud.'
         };
       }
     },

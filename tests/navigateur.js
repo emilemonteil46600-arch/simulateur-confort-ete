@@ -87,6 +87,26 @@ async function nouvellePage(navigateur, options) {
   await page.waitForFunction(function () { return document.querySelector('#soleil-projet').textContent.includes('Toulouse'); });
   ok((await apports()).includes('816'), 'Retour à l\'exemple : Toulouse, 816 kWh');
 
+  console.log('2 ter. Étape 3 : la température dedans (5R1C)');
+  await page.waitForSelector('#confort-projet .confort-carte');
+  const tuilesConfort = function () { return page.textContent('#chiffres-confort').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  ok((await tuilesConfort()).includes('33,3') && (await tuilesConfort()).includes('24,8'), 'Maison d\'exemple : pic opératif 33,3 °C, moyenne 24,8 °C (juin → septembre)');
+  ok(await page.$('#maison3d .m-dedans') !== null && (await page.textContent('#soleil-info')).includes('🏠'), 'La température dedans sur la maquette et dans la barre jour · heure');
+  ok(await page.$('#graphe-temperatures-semaine svg.graphique') !== null && await page.$$eval('#confort-labo .cl-cuve', function (c) { return c.length; }) === 4, 'Graphique de la semaine la plus chaude et labo des 4 réservoirs');
+  await page.click('#confort-paliers [data-palier="4"]');
+  await page.waitForTimeout(300);
+  ok((await page.textContent('#confort-essai-texte')).includes('30,3'), '« 4 × plus lourde » : pic 30,3 °C au lieu de 33,3');
+  await page.click('#confort-paliers [data-palier="1"]');
+  await page.$eval('details[data-pas="air"]', function (d) { d.open = true; });
+  await page.click('#vent-nuit-active');
+  await page.waitForTimeout(400);
+  ok((await tuilesConfort()).includes('34,6'), 'Fenêtres fermées la nuit : pic 34,6 °C');
+  await page.click('#vent-nuit-active');
+  await page.waitForTimeout(400);
+  await page.click('#confort-projet details.soleil-pas summary');
+  await page.waitForTimeout(200);
+  ok((await page.textContent('#confort-detail')).includes('Crank-Nicolson') && (await page.textContent('#confort-detail')).includes('le bilan boucle'), 'Détail pas à pas de l\'heure (5R1C) affiché');
+
   console.log('3. Atelier parois (étape 1)');
   await page.click('[data-onglet="atelier"]');
   const resultat = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };

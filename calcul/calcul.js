@@ -10,7 +10,8 @@
                                         déperditions H = Σ U·A, inertie de la maison
      Chapitre 1 ter calcul-transitoire.js Le labo : la chaleur qui avance (différences finies)
      Chapitre 2  calcul-soleil.js       Météo, soleil sur les façades, apports de chaleur
-     Chapitre 3  calcul-5r1c.js         (étape 3) le modèle horaire 5R1C
+     Chapitre 3  calcul-5r1c.js         Le modèle horaire 5R1C : les températures d'air,
+                                        des surfaces, de la masse et opérative, heure par heure
      Chapitre 4  calcul-indicateurs.js  (étape 4) heures, DH, adaptatif, PMV/PPD, score
      Chapitre 5  calcul-preconisations.js (étape 5) sensibilité et bouquets
 
@@ -32,11 +33,15 @@
   const soleil = global.ConfortSoleil ||
     (typeof require === 'function' ? require('./calcul-soleil.js') : null);
 
+  const cinqR1C = global.ConfortCinqR1C ||
+    (typeof require === 'function' ? require('./calcul-5r1c.js') : null);
+
   const ConfortCalcul = {
     parois: parois,
     batiment: batiment,
     transitoire: transitoire,
-    soleil: soleil
+    soleil: soleil,
+    cinqR1C: cinqR1C
   };
 
   global.ConfortCalcul = ConfortCalcul;

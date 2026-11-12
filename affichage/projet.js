@@ -45,7 +45,8 @@
       casquettes: Object.assign({}, base.casquettes, p.casquettes || {}),
       couleurs: Object.assign({}, base.couleurs, p.couleurs || {}),
       parois: Object.assign(base.parois, p.parois || {}),
-      cloisons: Object.assign(base.cloisons, p.cloisons || {})
+      cloisons: Object.assign(base.cloisons, p.cloisons || {}),
+      ventilation: Object.assign(base.ventilation, p.ventilation || {}, { nuit: Object.assign(base.ventilation.nuit, (p.ventilation || {}).nuit || {}) })
     };
   }
 
@@ -142,17 +143,31 @@
     $('#vitrage-type').innerHTML = vitrages().map(function (v) {
       return '<option value="' + esc(v.id) + '"' + (v.id === projet.vitrage ? ' selected' : '') + '>' + esc(v.nom) + ' — Uw ' + nb(Number(v.Uw), 1) + '</option>';
     }).join('');
+    renderVentilation();
     renderBoussole();
     renderFacades();
     renderSorties();
   }
 
+  // Étape 7 : l'air (VMC, infiltrations, fenêtres ouvertes la nuit). Les débits en vol/h ; n50 → infiltrations = n50 / 20 (H).
+  function renderVentilation() {
+    const v = projet.ventilation;
+    document.querySelectorAll('input[data-vent]').forEach(function (i) { i.value = v[i.dataset.vent]; });
+    $('#vent-nuit-active').checked = !!v.nuit.active;
+    segments($('#vent-nuit-debit'), X.ventilation.debitsNuit, v.nuit.debit, 'data-nuit-debit');
+    document.querySelectorAll('input[data-nuit]').forEach(function (i) { i.value = v.nuit[i.dataset.nuit]; });
+    $('#bloc-nuit').hidden = !v.nuit.active;
+  }
+
   function renderSorties() {
     const g = projet.geometrie;
     const o = B.orientation(g.orientation);
+    const v = projet.ventilation;
     const val = {
       longueur: nb(g.longueur, 1) + ' m', largeur: nb(g.largeur, 1) + ' m', hauteurEtage: nb(g.hauteurEtage, 2) + ' m',
-      pente: nb(g.pente) + '°', orientation: nb(g.orientation) + '° · ' + o.nom, cloisons: nb(projet.cloisons.ratio, 1)
+      pente: nb(g.pente) + '°', orientation: nb(g.orientation) + '° · ' + o.nom, cloisons: nb(projet.cloisons.ratio, 1),
+      vmc: nb(v.vmc, 2) + ' vol/h', n50: nb(v.n50, 1) + ' vol/h → ' + nb(v.n50 / 20, 2) + ' vol/h',
+      nuitDebut: nb(v.nuit.debut) + ' h', nuitFin: nb(v.nuit.fin) + ' h', nuitSeuil: nb(v.nuit.seuil) + ' °C', nuitEcart: nb(v.nuit.ecart) + ' °C'
     };
     document.querySelectorAll('output[data-sortie]').forEach(function (s) { s.textContent = val[s.dataset.sortie]; });
     const toit = TOITS.find(function (t) { return t.id === g.toit; });
@@ -163,7 +178,8 @@
       toiture: toit.nom + (g.toit === 'plat' ? '' : ' · ' + nb(g.pente) + '°'),
       orientation: 'A → ' + o.nom,
       fenetres: nb(vitre, 1) + ' m²',
-      parois: nomParoi(projet.parois.murs).split(' ')[0]
+      parois: nomParoi(projet.parois.murs).split(' ')[0],
+      air: nb(v.vmc + v.n50 / 20, 2) + ' vol/h' + (v.nuit.active ? ' · nuit ' + nb(v.nuit.debit) : '')
     };
     document.querySelectorAll('[data-resume]').forEach(function (s) { s.textContent = resume[s.dataset.resume]; });
   }
@@ -236,7 +252,7 @@
       jaugeVide() +
       '<p class="aide" style="margin:2px 0 8px;text-align:center">Elle combinera les indicateurs ci-dessous, chacun noté sur 10 avec <b>tes barèmes</b> et pondéré par <b>tes coefficients</b>.</p>' +
       '<div class="puces-futures">' + INDICATEURS_FUTURS.map(function (i) { return '<span>' + i + '</span>'; }).join('') + '</div></div>' +
-      '<div id="carte-apports"></div>';
+      '<div id="carte-temperatures"></div><div id="carte-apports"></div>';
 
     if (erreurs.length) {
       $('#chiffres-maison').innerHTML = '';
@@ -392,6 +408,9 @@
       });
     });
     $('#g-cloisons').addEventListener('input', function (e) { projet.cloisons.ratio = Number(e.target.value); apresModif(false); });
+    document.querySelectorAll('input[data-vent]').forEach(function (i) { i.addEventListener('input', function () { projet.ventilation[i.dataset.vent] = Number(i.value); apresModif(false); }); });
+    document.querySelectorAll('input[data-nuit]').forEach(function (i) { i.addEventListener('input', function () { projet.ventilation.nuit[i.dataset.nuit] = Number(i.value); apresModif(false); }); });
+    $('#vent-nuit-active').addEventListener('change', function (e) { projet.ventilation.nuit.active = e.target.checked; $('#bloc-nuit').hidden = !e.target.checked; apresModif(false); });
     $('#saisie').addEventListener('click', function (e) {
       const b = e.target.closest('button');
       if (!b) return;
@@ -402,6 +421,7 @@
       else if (b.dataset.azimut !== undefined) g.orientation = Number(b.dataset.azimut);
       else if (b.dataset.couleurMurs) projet.couleurs.murs = b.dataset.couleurMurs;
       else if (b.dataset.couleurToiture) projet.couleurs.toiture = b.dataset.couleurToiture;
+      else if (b.dataset.nuitDebit !== undefined) projet.ventilation.nuit.debit = Number(b.dataset.nuitDebit);
       else if (b.id === 'btn-projet-exemple') {
         if (!confirm('Revenir à la maison d\'exemple ? Ta saisie actuelle sera remplacée.')) return;
         projet = completer(BAO.cloner(X.projet));

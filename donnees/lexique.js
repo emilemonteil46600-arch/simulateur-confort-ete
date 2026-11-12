@@ -164,7 +164,7 @@ window.LEXIQUE = {
     { id: "sol-air", terme: "Température sol-air", motifs: ["sol-air"], unite: "°C",
       definition: "La température fictive de l'air qui donnerait à une paroi opaque le même flux que l'air réel + le soleil qu'elle absorbe − ce qu'elle rayonne vers le ciel froid : θsa = T + α·Rse·I − Fciel·Rse·hr·Δθer. Un toit sombre en plein soleil « voit » 55 à 60 °C. C'est ce que voit la face extérieure dans le labo « vraie météo ».",
       source: "NF EN ISO 13790 § 11.4.6 (H) ; ASHRAE Handbook, Fundamentals" },
-    { id: "bestest", terme: "BESTEST (ASHRAE 140), motifs: ["BESTEST"],
+    { id: "bestest", terme: "BESTEST (ASHRAE 140)", motifs: ["BESTEST"],
       definition: "Une série de cas tests internationaux pour vérifier un logiciel de simulation thermique : une petite maison de 8 × 6 m à Denver, en versions légère (600) et lourde (900), avec ou sans chauffage. Les cas « FF » (free-float, évolution libre) donnent les températures extrêmes et moyennes à retrouver dans la plage des logiciels de référence.",
       source: "ANSI/ASHRAE 140 ; Judkoff & Neymark, IEA BESTEST (NREL, 1995)" }
   ]

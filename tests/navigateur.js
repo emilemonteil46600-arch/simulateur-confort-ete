@@ -87,6 +87,26 @@ async function nouvellePage(navigateur, options) {
   await page.waitForFunction(function () { return document.querySelector('#soleil-projet').textContent.includes('Toulouse'); });
   ok((await apports()).includes('816'), 'Retour à l\'exemple : Toulouse, 816 kWh');
 
+  console.log('2 ter. Étape 3 : la température dedans (5R1C)');
+  await page.waitForSelector('#confort-projet .confort-carte');
+  const tuilesConfort = function () { return page.textContent('#chiffres-confort').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  ok((await tuilesConfort()).includes('33,3') && (await tuilesConfort()).includes('24,8'), 'Maison d\'exemple : pic opératif 33,3 °C, moyenne 24,8 °C (juin → septembre)');
+  ok(await page.$('#maison3d .m-dedans') !== null && (await page.textContent('#soleil-info')).includes('🏠'), 'La température dedans sur la maquette et dans la barre jour · heure');
+  ok(await page.$('#graphe-temperatures-semaine svg.graphique') !== null && await page.$$eval('#confort-labo .cl-cuve', function (c) { return c.length; }) === 4, 'Graphique de la semaine la plus chaude et labo des 4 réservoirs');
+  await page.click('#confort-paliers [data-palier="4"]');
+  await page.waitForTimeout(300);
+  ok((await page.textContent('#confort-essai-texte')).includes('30,3'), '« 4 × plus lourde » : pic 30,3 °C au lieu de 33,3');
+  await page.click('#confort-paliers [data-palier="1"]');
+  await page.$eval('details[data-pas="air"]', function (d) { d.open = true; });
+  await page.click('#vent-nuit-active');
+  await page.waitForTimeout(400);
+  ok((await tuilesConfort()).includes('34,6'), 'Fenêtres fermées la nuit : pic 34,6 °C');
+  await page.click('#vent-nuit-active');
+  await page.waitForTimeout(400);
+  await page.click('#confort-projet details.soleil-pas summary');
+  await page.waitForTimeout(200);
+  ok((await page.textContent('#confort-detail')).includes('Crank-Nicolson') && (await page.textContent('#confort-detail')).includes('le bilan boucle'), 'Détail pas à pas de l\'heure (5R1C) affiché');
+
   console.log('3. Atelier parois (étape 1)');
   await page.click('[data-onglet="atelier"]');
   const resultat = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };
@@ -107,9 +127,29 @@ async function nouvellePage(navigateur, options) {
   await page.click('#btn-enregistrer');
   ok((await page.textContent('#comparaison')).includes('Façade test'), 'Mes parois : la paroi enregistrée apparaît dans la comparaison');
 
-  console.log('3 ter. Le labo animé');
+  console.log('3 bis. Ma paroi (mode simple) et le labo animé');
   await page.selectOption('#modele', 'beton-ite');
   await page.click('#btn-modele');
+  await page.click('[data-onglet="paroi"]');
+  await page.waitForFunction(function () { return document.querySelector('#labo-mesures') && document.querySelector('#labo-mesures').textContent.includes('sol-air'); });
+  ok(await page.$$eval('#paroi-nature .nature-carte', function (b) { return b.length; }) === 3 && await page.$('#paroi-nature [data-nature="mur"][aria-pressed="true"]') !== null, 'Ma paroi : 3 natures, « Mur extérieur » choisi pour le béton + ITE');
+  ok((await page.textContent('#labo-mesures')).includes('sol-air') && (await page.textContent('#labo-jour')).includes('juin'), 'Labo « vraie météo » : sol-air à Toulouse, semaine la plus chaude (juin)');
+  const verdict = function () { return page.textContent('#paroi-verdict').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  ok((await verdict()).includes('repères sur 6') && (await verdict()).includes('Flux de pointe'), 'Verdict : 6 repères dont ceux du labo');
+  await page.click('#paroi-nature [data-nature="toiture"]');
+  await page.waitForTimeout(500);
+  ok((await page.textContent('#labo-champs-scenario')).includes('Pente') && await page.$('#paroi-nature [data-nature="toiture"][aria-pressed="true"]') !== null, 'Toiture : le réglage « pente » apparaît');
+  await page.selectOption('#paroi-modele', 'combles-laine');
+  await page.waitForTimeout(600);
+  ok((await verdict()).includes('moyenne') && (await verdict()).includes('Pour faire mieux'), 'Plafond BA13 + laine : paroi moyenne l\'été (U bon, aucune masse) et les conseils');
+  await page.click('#paroi-nature [data-nature="plancher"]');
+  await page.waitForTimeout(500);
+  ok((await page.textContent('#labo-mesures')).includes('sol sous la dalle'), 'Plancher bas : la face extérieure est le sol');
+  await page.click('#paroi-nature [data-nature="mur"]');
+  await page.selectOption('#paroi-modele', 'beton-ite');
+  await page.waitForTimeout(400);
+  await page.click('[data-scenario="echelon"]');
+  await page.click('[data-piece="fixe"]');
   await page.waitForTimeout(300);
   ok(await page.$('#labo-scene svg .labo-courbe') !== null, 'Labo : mur en coupe avec la courbe de température');
   const nbCouches = function () { return page.$$eval('#corps-couches tr[data-couche]', function (t) { return t.length; }); };
@@ -142,6 +182,9 @@ async function nouvellePage(navigateur, options) {
   await page.waitForTimeout(400);
   ok((await page.textContent('#labo-mesures')).includes('Air de la pièce'), 'Labo : pièce libre');
   await page.click('[data-piece="fixe"]');
+  await page.click('[data-scenario="meteo"]');
+  await page.waitForTimeout(400);
+  ok((await page.textContent('#labo-mesures')).includes('sol-air'), 'Retour à la vraie météo');
 
   console.log('4. Méthode, lexique, Teste-toi');
   await page.click('[data-onglet="methode"]');

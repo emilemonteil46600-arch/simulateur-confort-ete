@@ -463,8 +463,56 @@
     };
   }
 
+  /* ---------- 9. Les repères de confort d'été d'une paroi (H) ----------
+     Ce ne sont PAS des exigences de norme : des ordres de grandeur courants dans les guides de conception
+     bioclimatique et les règles Th-I / RE2020, pour lire une paroi d'un coup d'œil. Chaque repère a trois niveaux :
+     bon / moyen / faible, avec ses deux seuils. Modifiables dans Données (étape 4 : la note multicritère).
+       Δt   déphasage (h) : ≥ 10 h, le pic de 15 h arrive après 1 h du matin, quand on peut ventiler (H)
+       f    amortissement : ≤ 0,10, il reste moins de 10 % de l'onde de « U seul » (H)
+       κ1   capacité côté pièce (kJ/(m²·K)) : ≥ 50 la paroi « encaisse » la journée (H)
+       U    (W/(m²·K)) : ≤ 0,25 mur / plancher, ≤ 0,15 toiture, de l'ordre des niveaux RE2020 (H)
+     Pour la simulation (labo « vraie météo ») : la face intérieure ne devrait pas dépasser l'air de la pièce
+     de plus de 1 °C (bon) / 3 °C (moyen), et le flux de pointe rester sous 5 W/m² (bon) / 15 (moyen) (H). */
+  const REPERES_CONFORT = {
+    dephasage: { nom: 'Déphasage', unite: 'h', sens: 'haut', seuils: [10, 6], source: 'Guides bioclimatiques, règles Th-I (H)' },
+    amortissement: { nom: 'Amortissement f', unite: '', sens: 'bas', seuils: [0.10, 0.30], source: 'Guides bioclimatiques (H)' },
+    kappa1: { nom: 'Capacité côté pièce κ1', unite: 'kJ/(m²·K)', sens: 'haut', seuils: [50, 20], source: 'NF EN ISO 13786, classes courantes (H)' },
+    U: { nom: 'Isolation U', unite: 'W/(m²·K)', sens: 'bas', seuils: { mur: [0.25, 0.5], toiture: [0.15, 0.3], plancher: [0.25, 0.5] }, source: 'Ordres de grandeur RE2020 / rénovation (H)' },
+    surchauffeFace: { nom: 'Face intérieure au-dessus de l\'air', unite: '°C', sens: 'bas', seuils: [1, 3], source: 'Hypothèse (H) : confort radiant' },
+    fluxPointe: { nom: 'Flux de pointe qui entre', unite: 'W/m²', sens: 'bas', seuils: [5, 15], source: 'Hypothèse (H)' }
+  };
+
+  // Niveau d'une valeur : 'bon' / 'moyen' / 'faible', selon le sens du repère et ses deux seuils [bon, moyen].
+  function niveauRepere(repere, valeur, nature) {
+    const s = Array.isArray(repere.seuils) ? repere.seuils : repere.seuils[nature] || repere.seuils.mur;
+    if (valeur === null || valeur === undefined || !isFinite(valeur)) return { niveau: null, seuils: s };
+    const bon = repere.sens === 'haut' ? valeur >= s[0] : valeur <= s[0];
+    const moyen = repere.sens === 'haut' ? valeur >= s[1] : valeur <= s[1];
+    return { niveau: bon ? 'bon' : (moyen ? 'moyen' : 'faible'), seuils: s };
+  }
+
+  // Les repères d'une paroi analysée (chapitre 1) + ceux d'une simulation (facultatif : { surchauffeFace, fluxPointe }).
+  function reperesConfort(analyse, nature, simulation, reperes) {
+    const R = reperes || REPERES_CONFORT;
+    const valeurs = {
+      dephasage: analyse.dyn.dephasage, amortissement: analyse.dyn.amortissement, kappa1: analyse.dyn.kappa1 / 1000, U: analyse.U
+    };
+    if (simulation) { valeurs.surchauffeFace = simulation.surchauffeFace; valeurs.fluxPointe = simulation.fluxPointe; }
+    const liste = Object.keys(valeurs).map(function (id) {
+      const n = niveauRepere(R[id], valeurs[id], nature);
+      return { id: id, nom: R[id].nom, unite: R[id].unite, sens: R[id].sens, valeur: valeurs[id], niveau: n.niveau, seuils: n.seuils, source: R[id].source };
+    });
+    const points = { bon: 2, moyen: 1, faible: 0 };
+    const notes = liste.filter(function (l) { return l.niveau; });
+    const score = notes.length ? notes.reduce(function (s, l) { return s + points[l.niveau]; }, 0) / (2 * notes.length) : null;
+    return { liste: liste, score: score, verdict: score === null ? null : (score >= 0.75 ? 'bon' : (score >= 0.4 ? 'moyen' : 'faible')) };
+  }
+
   /* ---------- Export ---------- */
   const ConfortParois = {
+    REPERES_CONFORT: REPERES_CONFORT,
+    niveauRepere: niveauRepere,
+    reperesConfort: reperesConfort,
     PERIODE: PERIODE,
     OMEGA: OMEGA,
     RESISTANCES_SUPERFICIELLES: RESISTANCES_SUPERFICIELLES,

@@ -78,6 +78,16 @@
   function prevenir() { document.dispatchEvent(new CustomEvent('confort:donnees')); }
 
   function trouverMateriau(id) { return materiaux.liste.find(function (m) { return m.id === id; }) || null; }
+
+  // Nature d'une paroi : 'mur' | 'toiture' | 'plancher'. Devinée si elle n'est pas enregistrée (anciennes parois) :
+  // flux horizontal → mur ; sinon un plancher si le nom ou le modèle le dit, sinon une toiture.
+  const NATURES = { mur: { nom: 'Mur extérieur', sensFlux: 'horizontal' }, toiture: { nom: 'Toiture', sensFlux: 'descendant' }, plancher: { nom: 'Plancher bas', sensFlux: 'descendant' } };
+  function natureParoi(p) {
+    if (p.nature && NATURES[p.nature]) return p.nature;
+    if (p.sensFlux === 'horizontal' || !p.sensFlux) return 'mur';
+    return /plancher|dallage|sol\b/i.test(p.nom || '') ? 'plancher' : 'toiture';
+  }
+  function natureModele(m) { return natureParoi(m); }
   function analyser(p) { return P.analyserParoi(p, materiaux.liste); }
   function famillesDe(p) { return p.couches.map(function (c) { const m = trouverMateriau(c.materiau); return m ? m.famille : 'revetement'; }); }
   function estExemple(m) { return EX.materiaux.some(function (x) { return x.id === m.id; }); }
@@ -412,11 +422,12 @@
       $(id).addEventListener('click', function () { renderComparaison(analyser(paroi)); renderLocal(); prevenir(); });
     });
     $('#type-paroi').addEventListener('change', function (e) { paroi.type = e.target.value; apresModifParoi(false); });
-    $('#sens-flux').addEventListener('change', function (e) { paroi.sensFlux = e.target.value; apresModifParoi(false); });
+    $('#sens-flux').addEventListener('change', function (e) { paroi.sensFlux = e.target.value; if (e.target.value === 'horizontal') paroi.nature = 'mur'; else if (paroi.nature === 'mur') delete paroi.nature; apresModifParoi(false); });
     $('#btn-modele').addEventListener('click', function () {
       const id = $('#modele').value;
       if (!confirm('Remplacer la paroi en cours par « ' + modele(id).nom + ' » ? (Elle n\'est gardée que si tu l\'as enregistrée.)')) return;
       paroi = paroiDepuisModele(id);
+      paroi.nature = natureModele(modele(id));
       apresModifParoi(true);
     });
 
@@ -542,11 +553,27 @@
      ========================================================== */
   // Ce que le labo animé (labo.js) peut lire et modifier : la paroi en cours de l'atelier.
   window.ConfortAtelier = {
+    NATURES: NATURES,
     paroi: function () { return paroi; },
     materiaux: function () { return materiaux.liste; },
     analyser: function () { return analyser(paroi); },
     onde: function () { return reglages.onde; },
-    modifier: function (changer) { changer(paroi); apresModifParoi(true); }
+    modifier: function (changer) { changer(paroi); apresModifParoi(true); },
+    nature: function () { return natureParoi(paroi); },
+    // Onglet « Ma paroi » : changer la nature garde les couches (on change le sens du flux et les résistances superficielles).
+    choisirNature: function (n) {
+      if (!NATURES[n]) return;
+      paroi.nature = n; paroi.sensFlux = NATURES[n].sensFlux; paroi.type = 'exterieure';
+      apresModifParoi(true);
+    },
+    modeles: function (n) { return EX.parois.filter(function (m) { return m.type === 'exterieure' && natureModele(m) === n; }); },
+    appliquerModele: function (id) {
+      if (!modele(id)) return;
+      const n = natureModele(modele(id));
+      paroi = paroiDepuisModele(id);
+      paroi.nature = n;
+      apresModifParoi(true);
+    }
   };
 
   BAO.initOnglets(CLES.onglet);

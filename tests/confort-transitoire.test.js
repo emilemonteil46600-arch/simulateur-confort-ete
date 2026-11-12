@@ -82,3 +82,43 @@ test('Ordres de grandeur de la Méthode : temps de traversée e²/a et nombre de
 test('Le sommaire calcul.js donne accès au labo', function () {
   assert.equal(C.transitoire, T);
 });
+
+/* ---------- Onglet « Ma paroi » : une vraie série horaire, l'air neuf à part, le résumé ---------- */
+test('Scénario « série » : interpolation linéaire, bornes tenues, et une série constante = un échelon', function () {
+  const sc = { type: 'serie', origine: -24, valeurs: [10, 20, 30, 30, 30] };
+  assert.equal(T.temperatureExterieure(sc, -24), 10);
+  assert.ok(proche(T.temperatureExterieure(sc, -23.5), 15, 1e-12));
+  assert.equal(T.temperatureExterieure(sc, -22), 30);
+  assert.equal(T.temperatureExterieure(sc, -30), 10, 'avant le début : la 1re valeur');
+  assert.equal(T.temperatureExterieure(sc, 100), 30, 'après la fin : la dernière');
+  // Une série constante à 35 °C après 4 jours à 35 °C : la paroi finit en régime permanent, q = U × ΔT.
+  const n = 24 * 4 + 48 + 1;
+  const cst = { type: 'serie', origine: -96, valeurs: new Array(n).fill(35) };
+  const piece = { mode: 'fixe', tInterieure: 20 };
+  const r = T.simuler({ couches: ITE, rs: RS, scenario: cst, prechauffageJours: 4, piece: piece, dureeHeures: 48, pasSecondes: 60, sortieMinutes: 60 });
+  const U = P.coefficientU(ITE, RS);
+  assert.ok(proche(r.fluxInt[r.fluxInt.length - 1], U * 15, 0.02), 'q = ' + r.fluxInt[r.fluxInt.length - 1] + ' ≠ U·ΔT = ' + U * 15);
+});
+
+test('Air neuf à part : avec une série sol-air, la pièce libre respire l\'air dehors, pas le sol-air', function () {
+  const n = 24 * 6 + 1;
+  const chaud = new Array(n).fill(45), air = new Array(n).fill(25);
+  const base = { couches: ITE, rs: RS, prechauffageJours: 4, piece: { mode: 'libre', tInterieure: 25, aireMur: 10, volume: 50, renouvellement: 2, capaciteMobilier: 0 }, dureeHeures: 48, pasSecondes: 60, sortieMinutes: 60 };
+  const sans = T.simuler(Object.assign({}, base, { scenario: { type: 'serie', origine: -96, valeurs: chaud } }));
+  const avec = T.simuler(Object.assign({}, base, { scenario: { type: 'serie', origine: -96, valeurs: chaud, air: { type: 'serie', origine: -96, valeurs: air } } }));
+  const fin = function (r) { return r.tPiece[r.tPiece.length - 1]; };
+  assert.ok(fin(sans) > 40, 'sans série d\'air, la pièce respire le sol-air : ' + fin(sans));
+  assert.ok(fin(avec) > 25 && fin(avec) < 30, 'avec l\'air à 25 °C et 2 vol/h, la pièce reste proche de 25 : ' + fin(avec));
+  assert.equal(T.temperatureAirNeuf({ type: 'echelon', tAvant: 20, tApres: 35 }, 1), 35);
+});
+
+test('Résumé d\'une simulation : pics, déphasage et amortissement observés retrouvent les matrices sur une sinusoïde', function () {
+  const dyn = P.caracteristiquesDynamiques(ITE, RS);
+  const r = T.simuler({ couches: ITE, rs: RS, scenario: { type: 'journee', tMoyenne: 25, amplitude: 8, heureMax: 15 }, piece: { mode: 'fixe', tInterieure: 25 }, dureeHeures: 72, pasSecondes: 60, sortieMinutes: 10 });
+  const z = T.resumerSimulation(r, 24, 72);
+  assert.ok(proche(z.tExt.max, 33, 1e-6) && proche(z.tExt.min, 17, 1e-6));
+  assert.ok(Math.abs(z.dephasageObserve - dyn.dephasage) < 0.35, 'déphasage observé ' + z.dephasageObserve + ' ≠ ' + dyn.dephasage);
+  // Face intérieure : amplitude = f × U × 8 × Rsi (θsi − θa = Rsi × q), donc l'amortissement observé sur θsi vaut f × U × Rsi.
+  assert.ok(proche(z.amortissementObserve, dyn.amortissement * dyn.U * RS.rsi, 0.003), 'amortissement observé ' + z.amortissementObserve);
+  assert.ok(z.flux.max > 0 && z.ecartFaceMax > 0 && z.energie > 0 && proche(z.heures, 48, 1e-9));
+});

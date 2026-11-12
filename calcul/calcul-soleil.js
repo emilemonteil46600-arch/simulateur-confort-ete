@@ -226,6 +226,27 @@
     return { soleil: soleil, ciel: ciel, flux: soleil - ciel };
   }
 
+  // Température « sol-air » (°C) : la température fictive de l'air qui donnerait à la paroi le même flux
+  // que l'air réel + le soleil − le ciel froid. C'est la même formule que l'apport opaque, divisée par U × A :
+  //   θsa = T + α × Rse × I − Fciel × Rse × hr × Δθer        [°C] + [m²·K/W] × [W/m²] = °C
+  // Un mur clair (α 0,4) à 500 W/m² : + 8 °C ; une tuile sombre (α 0,8) à 900 W/m² : + 29 °C au-dessus de l'air.
+  // C'est ce que « voit » la face extérieure d'une paroi dans le labo « vraie météo ».
+  function temperatureSolAir(T, ecl, inclinaison, alpha) {
+    const fciel = (1 + Math.cos(inclinaison * RAD)) / 2;
+    return T + alpha * RSE * ecl.total - fciel * RSE * HR_CIEL * DT_CIEL;
+  }
+
+  // La série horaire sol-air d'une paroi (inclinaison, azimut, α) entre les heures k0 et k1 (indices UTC de la météo).
+  function serieSolAir(meteo, lieu, inclinaison, azimut, alpha, k0, k1) {
+    const N = k1 - k0, s = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const k = ((k0 + i) % HEURES_AN + HEURES_AN) % HEURES_AN;
+      const soleil = positionSoleil(k + (meteo.decalage || 0), lieu);
+      s[i] = temperatureSolAir(meteo.T[k], eclairementParoi({ Gbn: meteo.Gbn[k], Gdh: meteo.Gdh[k] }, soleil, inclinaison, azimut), inclinaison, alpha);
+    }
+    return s;
+  }
+
   /* ==========================================================
      6. APPORTS INTERNES (occupants, appareils, éclairage)
      Chaque usage a des puissances de pointe (W/m² de plancher) et des profils horaires
@@ -377,7 +398,7 @@
     heureSolaire: heureSolaire, angleHoraire: angleHoraire, positionSoleil: positionSoleil,
     normaleParoi: normaleParoi, cosIncidence: cosIncidence, eclairementParoi: eclairementParoi,
     fractionEnsoleillee: fractionEnsoleillee, facteurProtection: facteurProtection, apportFenetre: apportFenetre,
-    apportOpaque: apportOpaque, apportInterne: apportInterne, pansDuToit: pansDuToit,
+    apportOpaque: apportOpaque, temperatureSolAir: temperatureSolAir, serieSolAir: serieSolAir, apportInterne: apportInterne, pansDuToit: pansDuToit,
     apportsHoraires: apportsHoraires, sommeKWh: sommeKWh, semaineLaPlusChaude: semaineLaPlusChaude, courseDuJour: courseDuJour
   };
 

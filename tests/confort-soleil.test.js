@@ -305,3 +305,20 @@ test('Heure type de la Méthode (§ 26) : Toulouse, 21 juillet, 16 h, façade Ou
   const volet = S.apportFenetre(ouest, Object.assign({ protection: { Fc: 0.25 } }, base));
   assert.ok(volet.baissee && proche(volet.flux, 157.1, 0.05));
 });
+
+test('Méthode § 36 : la température sol-air, à la main', function () {
+  // Mur (vertical, Fciel = ½), α 0,6, 500 W/m², air à 30 °C : 30 + 0,6 × 0,04 × 500 − 0,5 × 0,04 × 4,5 × 11 = 41,01 °C.
+  assert.ok(proche(S.temperatureSolAir(30, { total: 500 }, 90, 0.6), 41.01, 1e-9));
+  // Toit sombre à 35° : Fciel = (1 + cos 35°)/2 = 0,9097 → 30 + 28,8 − 1,80 = 57,0 °C.
+  assert.ok(proche(S.temperatureSolAir(30, { total: 900 }, 35, 0.8), 30 + 28.8 - 0.9097 * 0.04 * 4.5 * 11, 1e-3));
+  // La nuit, sans soleil : plus froid que l'air (le ciel), de 1 °C pour un mur.
+  assert.ok(proche(S.temperatureSolAir(20, { total: 0 }, 90, 0.6), 19.01, 1e-9));
+  // Série sur la semaine la plus chaude de Toulouse, façade Ouest claire : le sol-air dépasse l'air l'après-midi, jamais de plus de ~25 °C.
+  const k0 = (S.jourDeLAnnee(7, 20) - 1) * 24, k1 = k0 + 72;
+  const s = S.serieSolAir(METEO, TOULOUSE, 90, 270, 0.4, k0, k1);
+  let maxEcart = -Infinity;
+  for (let i = 0; i < s.length; i++) maxEcart = Math.max(maxEcart, s[i] - METEO.T[k0 + i]);
+  assert.ok(s.length === 72 && maxEcart > 5 && maxEcart < 25, 'écart sol-air − air max : ' + maxEcart);
+  // Modulo l'année : des indices négatifs rebouclent sur décembre.
+  assert.ok(S.serieSolAir(METEO, TOULOUSE, 90, 180, 0.4, -5, 5).length === 10);
+});

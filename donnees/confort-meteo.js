@@ -30,4 +30,18 @@ window.CONFORT_METEO_VILLES = {
     { id: 'perpignan', nom: 'Perpignan', lat: 42.699, lon: 2.895, zone: 'H3' }
   ]
 };
+// Charge la météo d'une ville à la demande (une balise <script>, compatible file://), puis appelle suite(meteo).
+// Partagé par l'onglet Projet (affichage/soleil.js) et le labo (affichage/labo.js). version : le ?v= du site.
+window.CONFORT_METEO_VILLES.charger = function (id, suite, version, erreur) {
+  const dispo = window.CONFORT_METEO && window.CONFORT_METEO[id];
+  if (dispo) { suite(dispo); return; }
+  const attente = window.CONFORT_METEO_VILLES.attentes = window.CONFORT_METEO_VILLES.attentes || {};
+  if (attente[id]) { attente[id].push(suite); return; }
+  attente[id] = [suite];
+  const sc = document.createElement('script');
+  sc.src = 'donnees/meteo/' + id + '.js' + (version ? '?v=' + version : '');
+  sc.onload = function () { const l = attente[id]; delete attente[id]; if (window.CONFORT_METEO && window.CONFORT_METEO[id]) l.forEach(function (f) { f(window.CONFORT_METEO[id]); }); };
+  sc.onerror = function () { delete attente[id]; if (erreur) erreur(id); };
+  document.head.appendChild(sc);
+};
 if (typeof module !== 'undefined' && module.exports) module.exports = window.CONFORT_METEO_VILLES;

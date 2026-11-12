@@ -45,7 +45,9 @@ préconisations, validation, découpage en 8 étapes).
 
 ## Règles de fond
 
-1. **Trois onglets : Calcul · Méthode · Données** (+ « Comparer » plus tard si besoin).
+1. **Trois onglets : Calcul · Méthode · Données** (+ « Comparer » plus tard si besoin). Dans le simulateur, « Calcul » est
+   éclaté en **Projet** (la maison), **Ma paroi** (mode simple : une paroi dans la vraie météo, 12/11/2026) et
+   **Atelier parois** (expert).
 2. **Aucun chiffre sans source** : source, date, statut `exemple` / `valide`. Avertissement tant qu'une valeur est en `exemple`.
 3. **Hypothèses marquées (H)**, jamais cachées. **Fourchettes plutôt que fausse précision** ; on arrondit l'affichage, jamais le calcul.
 
@@ -67,13 +69,23 @@ préconisations, validation, découpage en 8 étapes).
     calcul-soleil.js          ch. 2 : météo, position du soleil (Spencer), éclairement des parois (ciel isotrope),
                               fenêtres (g, Ff, Fw, Fc, casquette), parois opaques (sol-air), apports internes,
                               séries horaires apportsHoraires (fait)
-    calcul-5r1c.js            ch. 3 : modèle horaire (étape 3) …
+    calcul-5r1c.js            ch. 3 : modèle horaire 5R1C (ISO 13790 annexe C (H)) : conductances, répartition des apports,
+                              pas de Crank-Nicolson, sol sous la dalle (H), ventilation + surventilation nocturne (H),
+                              entreesMaison (depuis la synthèse du ch. 1 bis et les apports du ch. 2) (fait)
+    calcul-indicateurs.js     ch. 4 : indicateurs + note (étape 4) …
   affichage/                  projet.js (onglet Projet : saisie simple + résultat, AUCUN calcul),
                               maison3d.js (maquette 3D SVG faite main : projection orthogonale, faces visibles n·c > 0),
                               interface.js (onglet Atelier parois, AUCUN calcul), schemas.js et graphiques.js (SVG),
-                              labo.js (labo animé de l'atelier : mur en coupe, glisser-déposer, horloge ; AUCUN calcul),
+                              labo.js (labo animé, dans l'onglet Ma paroi : mur en coupe, glisser-déposer, horloge, scénarios
+                              « ☀ vraie météo » (sol-air du ch. 2 ou sol du ch. 3, via CONFORT_METEO_VILLES.charger), coup de chaud,
+                              jour / nuit ; émet « confort:labo » ; AUCUN calcul),
+                              paroi.js (onglet Ma paroi : natures mur / toiture / plancher, modèles, verdict et repères (H) ; AUCUN calcul),
                               soleil.js (le soleil sur la maquette, barre jour · heure, cartes soleil et apports ; AUCUN calcul ;
-                              lit l'état de projet.js via window.ConfortProjet et l'événement « confort:projet »),
+                              lit l'état de projet.js via window.ConfortProjet et l'événement « confort:projet » ;
+                              expose window.ConfortApports et émet « confort:apports » et « confort:heure »),
+                              confort.js (étape 3 : la température dedans ; AUCUN calcul ; écoute « confort:apports », expose
+                              window.ConfortTemperatures (lu par soleil.js pour la maquette et la barre) ; tuiles, semaine la
+                              plus chaude, « et si la maison était plus lourde », labo des réservoirs, heure pas à pas, Données),
                               exercices.js (Teste-toi ; la bonne réponse vient TOUJOURS de calcul/), site.css (style du site)
   donnees/                    données PUBLIQUES d'exemple (confort-materiaux.js, confort-projet.js : maison d'exemple,
                               usages, fenêtres Uw/g, protections Fc, couleurs α, scénarios d'apports internes ; lexique.js ;
@@ -94,8 +106,9 @@ préconisations, validation, découpage en 8 étapes).
 - Les données d'Émile vivent dans le `localStorage`. Le site est sur la même origine que la boîte à outils
   (emilemonteil46600-arch.github.io) : les deux sites **partagent le même stockage** (utile à l'étape 5 pour lire
   les ratios du chiffrage `bao.chiffrage.biblio.v1`), d'où le préfixe `bao.confort.*`.
-- Clés (ne **jamais** les renommer sans migration) : `bao.confort.projet.v1` (la maison, dont `ville`, `casquettes`, `couleurs`),
-  `bao.confort.paroi.v1`, `bao.confort.parois.v1`, `bao.confort.local.v1`, `bao.confort.materiaux.v1`,
+- Clés (ne **jamais** les renommer sans migration) : `bao.confort.projet.v1` (la maison, dont `ville`, `casquettes`, `couleurs`,
+  `ventilation` {vmc, n50, nuit}),
+  `bao.confort.paroi.v1` (dont `nature` : mur | toiture | plancher, devinée si absente), `bao.confort.parois.v1`, `bao.confort.local.v1`, `bao.confort.materiaux.v1`,
   `bao.confort.reglages.v1` (onde + types de fenêtres + `protections` + `seuilProtection` ; l'atelier et le projet y écrivent
   chacun leur partie : toujours relire avant d'écrire) ; affichage seulement (hors sauvegarde) : `bao.confort.onglet`,
   `bao.confort.labo.affichage`, `bao.confort.soleil.affichage` (jour et heure affichés).
@@ -123,6 +136,15 @@ préconisations, validation, découpage en 8 étapes).
      Ouest 554,3 W/m², fenêtre 3 m² g 0,6 → 628,6 W, volet Fc 0,25 → 157,1 W ; casquette h 60° d 0,5 → 0,507 ;
      mur α 0,4 U 0,5 20 m² 500 W/m² → 70,1 W ; maison d'exemple Toulouse juin → sept. : fenêtres 816 kWh,
      internes 1 092, murs 59, toit 79 (sans protection : 1 745) ;
+   - Ma paroi : sol-air mur α 0,6, 500 W/m², air 30 °C → **41,01 °C** ; scénario « série » : série constante = échelon (q = U·ΔT) ;
+     air neuf de la pièce libre = l'air réel, pas le sol-air ; déphasage et amortissement observés (jour par jour) = matrices
+     sur une sinusoïde ; repères (H) : ITE > ITI, U 0,2 bon pour un mur, moyen pour une toiture ;
+   - 5R1C (étape 3) : bilan de chaque nœud nul à chaque heure (< 1e-6 W) ; régime permanent = circuit résolu à la main ;
+     échelon = exponentielle de τ = (Cm/3600)/(Htr,em + H3) ; maison de test (Af 100, Cm 10 MJ/K, Am 250, 0,7 vol/h, 30 °C,
+     θm 24 → **25,003 °C**, θs 25,111, θair 25,443, θop 25,21) ; maison d'exemple Toulouse : Htr,is 1 242, Htr,ms 2 089,4,
+     Htr,em 62,74, Htr,w 18,2, Hve 50,4 W/K (0,7 vol/h), τ 20,3 h, juin → sept. **pic opératif 33,3 °C, moyenne 24,8 °C**
+     (fenêtres ouvertes la nuit 3 vol/h) / 34,6 et 26,1 °C fenêtres fermées ; BESTEST 600FF (météo PVGIS Denver,
+     `tests/references/pvgis-denver-tmy.json`, indicatif) dans les plages publiées (H), 900FF à ± 2,5 K ;
    - Teste-toi : 40 tirages par exercice.
 2. `node tests/navigateur.js` : aucune erreur console, 390 px clair / sombre, exemples à l'écran, sauvegarde / restauration.
 3. **Changer le numéro de version `?v=AAAAMMJJ`** de TOUS les scripts et feuilles de style dans `index.html` à chaque
@@ -160,7 +182,7 @@ préconisations, validation, découpage en 8 étapes).
   pour comprendre (le labo de l'atelier). Continuer dans cet esprit : chaque notion importante peut avoir son « labo ».
 - Ordre : 1 bis (maison 3D) → 1 ter (labo animé) → 2 (météo + soleil sur la maquette) → 3 (5R1C) → 4 (indicateurs + note) → 5…7.
 
-## État au 06/11/2026 (soir)
+## État au 12/11/2026
 
 | Étape | État |
 |---|---|
@@ -170,5 +192,8 @@ préconisations, validation, découpage en 8 étapes).
 | 1 ter. Labo animé | **Fait, en attente de l'accord d'Émile** (demande du 07/11/2026 : « voir la température avancer dans le mur, puis dans la pièce »). Labo dans l'atelier (refait plus visuel le 07/11 : textures de matériaux, dégradé thermique, particules de flux, soleil / lune, horloge dans l'image, matériaux à glisser dans le mur, réglages repliés) : palette de couches, glisser-déposer, mur en coupe coloré par la température + courbe θ(x) + flèche de flux, horloge, coup de chaud / journées d'été, pièce climatisée / libre, graphique avec curseur, contrôle d'énergie. Méthode § 19, 1 exercice, 2 mots de lexique. Fiche `docs/etape-1ter.md`. |
 | Poubelle du labo | PR « Labo : une poubelle » (06/11) : 🗑 sur chaque couche, tirer une couche hors du mur la retire. |
 | 2. Météo + soleil | **Fait, en attente de l'accord d'Émile.** 10 villes PVGIS TMY (8 760 h), position du soleil, éclairement des parois, apports fenêtres / murs / toit / internes heure par heure ; maquette : vrai soleil, course, ombre portée, façades qui chauffent, volets qui se baissent, casquettes ; barre jour · heure animée ; cartes « Le soleil sur ta maison » et « Ce qui entre » ; détail pas à pas de l'heure ; Données : protections (Fc, seuil), météo, scénarios. Méthode § 20 à 27, 3 exercices + 3 questions, 13 mots de lexique. Fiche `docs/etape-2.md`. **Pas de canicule** : PVGIS donne les années réelles mais sans humidité (à décider). |
-| Visuel (demande du 06/11) | À faire après l'étape 2 : refaire plus beau l'onglet Projet (saisie + maison) et le labo. |
-| 3 à 7 | À faire, dans l'ordre du cahier des charges. |
+| 3. Moteur 5R1C | **Fait, en attente de l'accord d'Émile** (options conseillées retenues le 12/11 : VMC + n50/20, surventilation nocturne dès maintenant, sol = moyenne annuelle amortie (H), BESTEST avec météo PVGIS de Denver (indicatif), labo « réservoirs », canicule et sources reportées). Chapitre `calcul/calcul-5r1c.js`, saisie « 7. L'air », tuiles, carte « La température dedans » (semaine la plus chaude, « et si la maison était… », labo des réservoirs, heure pas à pas), pastille et vitres colorées sur la maquette, 🏠 dans la barre, carte « Températures d'été », Données. Méthode § 28 à 35 (circuit SVG, cours, exemple à la main), 3 exercices + 3 QCM, 9 mots de lexique, 11 tests. Fiche `docs/etape-3.md`. |
+| Ma paroi (demande du 12/11) | **Fait, en attente de l'accord d'Émile.** Onglet simple entre Projet et Atelier : 3 natures (mur / toiture / plancher bas, même paroi que l'atelier), modèles de départ, le labo animé déplacé ici avec le scénario « ☀ vraie météo » (ville PVGIS, début, jours, orientation, pente, couleur α → température sol-air ; plancher → sol sous la dalle ; air neuf = air réel), carte « Confort d'été de cette paroi » (verdict, 6 repères (H), conseils). Méthode § 36, Données (repères), fiche `docs/ma-paroi.md`, 4 tests. |
+| Visuel (demande du 06/11) | **B, à faire ensuite**, dans une PR séparée : refaire plus beau, épuré et pro l'onglet Projet (saisie + maison) et le labo, en gardant tout ce qui marche. |
+| Décisions ouvertes | Canicule (PVGIS années réelles sans humidité : humidité estimée (H), autre source, ou attendre l'étape 4) ; sources pour remplacer les valeurs d'exemple (Fc, seuil 200 W/m², apports internes, matériaux, ventilation) ; valeurs de l'annexe C et plages BESTEST à vérifier dans les textes. Émile n'a pas encore répondu aux 3 questions des étapes 1 à 3. |
+| 4 à 7 | À faire, dans l'ordre du cahier des charges. |

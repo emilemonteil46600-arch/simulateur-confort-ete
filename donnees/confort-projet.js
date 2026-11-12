@@ -114,6 +114,27 @@ window.CONFORT_PROJET = {
     }
   },
 
+  // Ventilation et air (étape 3). Valeurs d'EXEMPLE (H) :
+  //   vmc   débit hygiénique en volumes par heure (un logement : 0,4 à 0,6 vol/h selon la taille et le nombre de pièces,
+  //         arrêté du 24 mars 1982 (H : à vérifier)) ;
+  //   n50   perméabilité à l'air sous 50 Pa (vol/h) : ≈ 4 pour une maison existante ordinaire, 0,6 pour une maison passive ;
+  //         le débit d'infiltration moyen est pris égal à n50 / 20 (« règle du 1/20 » de Sherman, 1987) (H) ;
+  //   nuit  surventilation nocturne par ouverture des fenêtres : débit (vol/h), plage horaire (heure légale), on n'ouvre que si
+  //         la maison dépasse « seuil » et si dehors est plus frais d'au moins « ecart » (H).
+  ventilation: {
+    source: 'Valeurs d\'exemple (H) : ordres de grandeur, à remplacer par les débits réels (VMC, mesure n50 ou Q4Pa)', dateRef: '2026-11', statut: 'exemple',
+    defaut: { vmc: 0.5, n50: 4, nuit: { active: true, debit: 3, debut: 22, fin: 7, ecart: 2, seuil: 24 } },
+    debitsNuit: [
+      { id: 0, nom: 'Fermées', debit: 0 },
+      { id: 1, nom: 'Entrouvertes', debit: 1 },
+      { id: 3, nom: 'Ouvertes', debit: 3 },
+      { id: 8, nom: 'Traversantes', debit: 8 }
+    ]
+  },
+
+  // Le sol sous la dalle (étape 3) (H) : moyenne annuelle de l'air, saisons amorties de moitié et retardées d'un mois.
+  sol: { amortissement: 0.5, retardJours: 30, source: 'Hypothèse (H) inspirée de la NF EN ISO 13370 : à affiner (type de sol, isolation périphérique)', statut: 'exemple' },
+
   // Cloisons : m² de cloison par m² de plancher (H) — valeur d'exemple, à mesurer sur plan.
   cloisons: { ratio: 1.0, paroi: 'cloison-ba13', source: 'Valeur d\'exemple (H) : à mesurer sur le plan', statut: 'exemple' },
 
@@ -136,7 +157,8 @@ window.CONFORT_PROJET = {
     casquettes: { A: 0, B: 0, C: 0, D: 0 },
     couleurs: { murs: 'claire', toiture: 'moyenne' },
     parois: { murs: 'parpaing-iti', toiture: 'combles-laine', plancherBas: 'dallage-isole', plancherInter: 'plancher-inter', cloisons: 'cloison-ba13' },
-    cloisons: { ratio: 1.0 }
+    cloisons: { ratio: 1.0 },
+    ventilation: { vmc: 0.5, n50: 4, nuit: { active: true, debit: 3, debut: 22, fin: 7, ecart: 2, seuil: 24 } }
   }
 };
 })();

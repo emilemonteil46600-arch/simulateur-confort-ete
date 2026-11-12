@@ -188,3 +188,24 @@ test('Une paroi incomplète est signalée, pas calculée', function () {
 test('Le sommaire calcul.js donne accès au chapitre des parois', function () {
   assert.equal(C.parois, P);
 });
+
+test('Repères de confort d\'une paroi (H) : niveaux cohérents, ITE meilleure qu\'ITI, toiture plus exigeante sur U', function () {
+  const ite = P.analyserParoi(M.parois.find(function (p) { return p.id === 'beton-ite'; }), M.materiaux);
+  const iti = P.analyserParoi(M.parois.find(function (p) { return p.id === 'parpaing-iti'; }), M.materiaux);
+  const a = P.reperesConfort(ite, 'mur'), b = P.reperesConfort(iti, 'mur');
+  assert.equal(a.liste.length, 4, 'sans simulation : 4 repères');
+  assert.ok(a.liste.every(function (l) { return ['bon', 'moyen', 'faible'].indexOf(l.niveau) !== -1 && l.seuils.length === 2; }));
+  const k = function (r) { return r.liste.find(function (l) { return l.id === 'kappa1'; }); };
+  assert.equal(k(a).niveau, 'bon', 'béton côté pièce : κ1 ' + k(a).valeur);
+  assert.equal(k(b).niveau, 'faible', 'ITI : κ1 ' + k(b).valeur);
+  assert.ok(a.score > b.score, 'ITE ' + a.score + ' > ITI ' + b.score);
+  // Avec une simulation : 6 repères, et le verdict suit le score.
+  const c = P.reperesConfort(ite, 'mur', { surchauffeFace: 0.5, fluxPointe: 3 });
+  assert.equal(c.liste.length, 6);
+  assert.equal(c.liste[4].niveau, 'bon');
+  assert.ok(['bon', 'moyen', 'faible'].indexOf(c.verdict) !== -1);
+  // Le même U = 0,2 est « bon » pour un mur et seulement « moyen » pour une toiture.
+  assert.equal(P.niveauRepere(P.REPERES_CONFORT.U, 0.2, 'mur').niveau, 'bon');
+  assert.equal(P.niveauRepere(P.REPERES_CONFORT.U, 0.2, 'toiture').niveau, 'moyen');
+  assert.equal(P.niveauRepere(P.REPERES_CONFORT.dephasage, null).niveau, null);
+});

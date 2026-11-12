@@ -43,15 +43,12 @@
   function ville() { const p = window.ConfortProjet.projet(); return V.villes.find(function (v) { return v.id === p.ville; }) || V.villes[0]; }
 
   function chargerMeteo(id, suite) {
-    const dispo = window.CONFORT_METEO && window.CONFORT_METEO[id];
-    if (dispo) { suite(dispo); return; }
     if (chargement === id) return;
     chargement = id;
-    const sc = document.createElement('script');
-    sc.src = 'donnees/meteo/' + id + '.js' + (VERSION ? '?v=' + VERSION : '');
-    sc.onload = function () { chargement = null; if (window.CONFORT_METEO && window.CONFORT_METEO[id]) suite(window.CONFORT_METEO[id]); };
-    sc.onerror = function () { chargement = null; $('#soleil-projet').innerHTML = '<div class="alerte attention">La météo de ' + esc(id) + ' n\'a pas pu être chargée (fichier donnees/meteo/' + esc(id) + '.js).</div>'; };
-    document.head.appendChild(sc);
+    V.charger(id, function (m) { chargement = null; suite(m); }, VERSION, function () {
+      chargement = null;
+      $('#soleil-projet').innerHTML = '<div class="alerte attention">La météo de ' + esc(id) + ' n\'a pas pu être chargée (fichier donnees/meteo/' + esc(id) + '.js).</div>';
+    });
   }
 
   /* ==========================================================
@@ -83,12 +80,14 @@
     }
     const e = entrees(false);
     calc = {
-      entrees: e, lieu: e.lieu,
+      entrees: e, lieu: e.lieu, meteo: meteo,
       serie: S.apportsHoraires(e),
       sansProtection: S.apportsHoraires(entrees(true)),
       semaine: S.semaineLaPlusChaude(meteo.T, K_ETE, K1)
     };
     toutDessiner();
+    // L'étape 3 (affichage/confort.js) écoute : elle calcule les températures à partir de ces apports.
+    document.dispatchEvent(new CustomEvent('confort:apports'));
   }
 
   /* ==========================================================
@@ -167,10 +166,13 @@
   function dessinerHeure() {
     const h = etatHeure();
     const maquette = window.ConfortProjet.maquette;
+    const T3 = window.ConfortTemperatures;   // étape 3 : la température dedans à cette heure (affichage/confort.js)
+    const dedans = T3 ? T3.interieur(h.ins.i) : null;
     maquette.soleil({
       s: h.soleil.s, hauteur: h.soleil.hauteur, azimut: h.soleil.azimut,
       course: courseDuJour(),
-      eclairement: h.eclairement, baissees: h.baissees, ensoleillement: h.ensoleillement
+      eclairement: h.eclairement, baissees: h.baissees, ensoleillement: h.ensoleillement,
+      interieur: dedans
     });
     $('#soleil-jour').value = vue.jour;
     if (!anim) $('#soleil-heure').value = Math.round(vue.heure);
@@ -179,7 +181,9 @@
     $('#soleil-jouer').textContent = anim ? '❚❚' : '▶';
     $('#soleil-info').innerHTML = (h.soleil.hauteur > 0
       ? '<span title="Hauteur du soleil au-dessus de l\'horizon">☀ <b>' + nb(h.soleil.hauteur) + '°</b></span><span title="Azimut du soleil (depuis le Nord)">' + nb(h.soleil.azimut) + '° ' + nomAzimut(h.soleil.azimut) + '</span>'
-      : '<span>☾ nuit</span>') + '<span title="Température extérieure (année type)">🌡 <b>' + nb(h.T, 1) + ' °C</b></span>';
+      : '<span>☾ nuit</span>') + '<span title="Température extérieure (année type)">🌡 <b>' + nb(h.T, 1) + ' °C</b></span>' +
+      (dedans ? '<span title="Température opérative dedans (modèle 5R1C, étape 3)">🏠 <b>' + nb(dedans.Top, 1) + ' °C</b>' + (dedans.nuit ? ' <small>fenêtres ouvertes</small>' : '') + '</span>' : '');
+    document.dispatchEvent(new CustomEvent('confort:heure', { detail: { i: h.ins.i, k: h.ins.k, jour: vue.jour, heure: vue.heure } }));
     document.querySelectorAll('.mini-curseur').forEach(function (l) { l.setAttribute('x1', xMini(vue.heure)); l.setAttribute('x2', xMini(vue.heure)); });
     const det = $('#soleil-detail');
     if (det) det.textContent = detailHeure(h);
@@ -402,6 +406,13 @@
       ['Couleurs α', X.couleurs.map(function (c) { return c.nom.toLowerCase() + ' ' + nb(c.alpha, 1); }).join(' · '), X.sourceCouleurs]
     ].map(function (l) { return '<tr><td>' + l[0] + '</td><td class="num">' + l[1] + '</td><td>' + esc(l[2]) + '</td></tr>'; }).join('') + '</tbody>';
   }
+
+  // Ce que l'étape 3 (affichage/confort.js) lit : les apports calculés et les bornes de la période. Aucun calcul ici.
+  window.ConfortApports = {
+    calc: function () { return calc; }, K0: K0, K1: K1, K_ETE: K_ETE,
+    vue: function () { return vue; }, instant: instant, hhmm: hhmm,
+    redessinerHeure: function () { if (calc) dessinerHeure(); }
+  };
 
   dessinerDonnees();
   recalculer();

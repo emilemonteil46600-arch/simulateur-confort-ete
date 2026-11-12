@@ -66,10 +66,25 @@
 
   // 'echelon' : un « coup de chaud » brutal à t = 0 (de tAvant à tApres) — pour voir le front avancer.
   // 'journee' : sinusoïde de 24 h (moyenne ± amplitude, maximum à heureMax) — la vraie vie, en simplifié.
+  // 'serie'   : une vraie série horaire (météo du chapitre 2, température sol-air) : valeurs[k] est la
+  //             température à l'heure origine + k (origine ≤ 0 : les heures d'avant servent au préchauffage).
+  //             Entre deux heures, on interpole en ligne droite ; au-delà des bornes, on garde la dernière valeur.
   function temperatureExterieure(scenario, heures) {
     if (scenario.type === 'echelon') return heures < 0 ? scenario.tAvant : scenario.tApres;
+    if (scenario.type === 'serie') {
+      const v = scenario.valeurs, x = heures - (scenario.origine || 0);
+      if (x <= 0) return v[0];
+      if (x >= v.length - 1) return v[v.length - 1];
+      const k = Math.floor(x), f = x - k;
+      return v[k] + f * (v[k + 1] - v[k]);
+    }
     const w = 2 * Math.PI / 24;
     return scenario.tMoyenne + scenario.amplitude * Math.cos(w * (heures - scenario.heureMax));
+  }
+  // L'air neuf de la pièce : l'air dehors. Avec une série sol-air (ou le sol sous la dalle), ce n'est pas ce que
+  // voit la paroi : le scénario porte alors une 2e série « air » pour la ventilation.
+  function temperatureAirNeuf(scenario, heures) {
+    return scenario.air ? temperatureExterieure(scenario.air, heures) : temperatureExterieure(scenario, heures);
   }
 
   /* ---------- 3. Algorithme de Thomas (système tridiagonal) ----------
@@ -114,7 +129,8 @@
     const tInt0 = Number(o.piece.tInterieure);
     const sortie = Math.max(1, Math.round((o.sortieMinutes || 10) * 60 / pas));
     const tInit = o.scenario.type === 'echelon' ? Number(o.tInitiale !== undefined ? o.tInitiale : tInt0) : tInt0;
-    const debut = o.scenario.type === 'journee' ? -24 * (o.prechauffageJours === undefined ? 4 : o.prechauffageJours) : 0;
+    // Journée et série : on commence quelques jours « avant » pour que le mur ait oublié sa température de départ.
+    const debut = o.scenario.type === 'echelon' ? 0 : -24 * (o.prechauffageJours === undefined ? 4 : o.prechauffageJours);
     const etapes = Math.round((o.dureeHeures * 3600 - debut * 3600) / pas);
 
     // Inconnues : [pièce (si libre)] + tranches. Indice de la tranche i = i + decal.
@@ -150,6 +166,7 @@
     for (let s = 1; s <= etapes; s++) {
       const h0 = debut + (s - 1) * pas / 3600, h1 = debut + s * pas / 3600;
       const te0 = temperatureExterieure(o.scenario, h0), te1 = temperatureExterieure(o.scenario, h1);
+      const tv0 = temperatureAirNeuf(o.scenario, h0), tv1 = temperatureAirNeuf(o.scenario, h1);   // l'air neuf
       const taFixe = tInt0;
       // Tranches : Ci/Δt·(Ti' − Ti) = θ·[flux en fin de pas] + (1 − θ)·[flux en début de pas]
       for (let i = 0; i < N; i++) {
@@ -170,14 +187,14 @@
         a[0] = 0;
         c[0] = -theta * G[0];
         b[0] = pp.C / pas + theta * (G[0] + pp.Hv);
-        d[0] = pp.C / pas * Ta + (1 - theta) * (G[0] * (T[1] - Ta) + pp.Hv * (te0 - Ta)) + theta * pp.Hv * te1;
+        d[0] = pp.C / pas * Ta + (1 - theta) * (G[0] * (T[1] - Ta) + pp.Hv * (tv0 - Ta)) + theta * pp.Hv * tv1;
       }
       const avant = T;
       T = thomas(a, b, c, d);
       // Énergie qui entre dans la pièce par le mur, et énergie qui entre dans le système (mur + pièce) depuis dehors.
       const qMoy = theta * G[0] * (T[decal] - airInterieur(T)) + (1 - theta) * G[0] * (avant[decal] - airInterieur(avant));
       const qeMoy = theta * G[N] * (te1 - T[N - 1 + decal]) + (1 - theta) * G[N] * (te0 - avant[N - 1 + decal]);
-      const qvMoy = libre ? theta * pp.Hv * (te1 - T[0]) + (1 - theta) * pp.Hv * (te0 - avant[0]) : -qMoy;
+      const qvMoy = libre ? theta * pp.Hv * (tv1 - T[0]) + (1 - theta) * pp.Hv * (tv0 - avant[0]) : -qMoy;
       if (h1 > 1e-9) {
         energieInt += qMoy * pas;
         entreeTotale += (qeMoy + qvMoy) * pas;
@@ -212,18 +229,59 @@
   // Nombre de Fourier d'un pas : Fo = a·Δt/dx². Un schéma explicite exige Fo ≤ 1/2 ; l'implicite, non.
   function nombreFourier(diffusivite, pas, dx) { return diffusivite * pas / (dx * dx); }
 
+  // Ce qu'on lit d'une simulation sur une fenêtre [debut, fin] (heures) : les pics, et le déphasage / amortissement
+  // OBSERVÉS entre dehors et la face intérieure (pic à pic sur la fenêtre). Ils doivent rejoindre ceux des matrices
+  // (chapitre 1) si la météo est une sinusoïde ; sur une vraie météo, ils s'en écartent un peu (plusieurs fréquences).
+  function resumerSimulation(sim, debut, fin) {
+    const d = debut === undefined ? 0 : debut, f = fin === undefined ? Infinity : fin;
+    const r = { tExt: { max: -Infinity, min: Infinity, hMax: null }, tSi: { max: -Infinity, min: Infinity, hMax: null }, tPiece: { max: -Infinity, min: Infinity },
+      flux: { max: -Infinity, min: Infinity, hMax: null }, ecartFaceMax: -Infinity, energie: 0, heures: 0 };
+    let hPrec = null;
+    for (let i = 0; i < sim.temps.length; i++) {
+      const h = sim.temps[i];
+      if (h < d || h > f) continue;
+      const te = sim.tExt[i], si = sim.tSi[i], ta = sim.tPiece[i], q = sim.fluxInt[i];
+      if (te > r.tExt.max) { r.tExt.max = te; r.tExt.hMax = h; } if (te < r.tExt.min) r.tExt.min = te;
+      if (si > r.tSi.max) { r.tSi.max = si; r.tSi.hMax = h; } if (si < r.tSi.min) r.tSi.min = si;
+      if (ta > r.tPiece.max) r.tPiece.max = ta; if (ta < r.tPiece.min) r.tPiece.min = ta;
+      if (q > r.flux.max) { r.flux.max = q; r.flux.hMax = h; } if (q < r.flux.min) r.flux.min = q;
+      if (si - ta > r.ecartFaceMax) r.ecartFaceMax = si - ta;     // la face intérieure au-dessus de l'air : ce qu'on ressent par rayonnement
+      if (hPrec !== null && q > 0) r.energie += q * (h - hPrec);     // Wh/m² entrés dans la pièce (parts positives)
+      hPrec = h;
+    }
+    r.heures = hPrec === null ? 0 : hPrec - Math.max(d, sim.temps[0]);
+    // Déphasage observé : jour par jour, du pic dehors au pic de la face intérieure (ramené entre 0 et 24 h), puis la moyenne.
+    const jours = {};
+    for (let i = 0; i < sim.temps.length; i++) {
+      const h = sim.temps[i];
+      if (h < d || h > f) continue;
+      const j = Math.floor(h / 24), e = jours[j] || (jours[j] = { te: -Infinity, hte: 0, si: -Infinity, hsi: 0, h0: h, h1: h });
+      if (sim.tExt[i] > e.te) { e.te = sim.tExt[i]; e.hte = h; }
+      if (sim.tSi[i] > e.si) { e.si = sim.tSi[i]; e.hsi = h; }
+      e.h1 = h;
+    }
+    // Seuls les jours (presque) complets comptent : un bout de journée n'a pas de vrai pic.
+    const retards = Object.keys(jours).filter(function (j) { return jours[j].h1 - jours[j].h0 >= 20; }).map(function (j) { return ((jours[j].hsi - jours[j].hte) % 24 + 24) % 24; });
+    r.dephasageObserve = retards.length ? retards.reduce(function (s, x) { return s + x; }, 0) / retards.length : null;
+    const ampExt = (r.tExt.max - r.tExt.min) / 2, ampSi = (r.tSi.max - r.tSi.min) / 2;
+    r.amortissementObserve = ampExt > 0.05 ? ampSi / ampExt : null;
+    return r;
+  }
+
   const ConfortTransitoire = {
     RHO_C_AIR: RHO_C_AIR,
     DX_MAX: DX_MAX,
     mailler: mailler,
     conductances: conductances,
     temperatureExterieure: temperatureExterieure,
+    temperatureAirNeuf: temperatureAirNeuf,
     thomas: thomas,
     pieceParM2: pieceParM2,
     simuler: simuler,
     tempsDeReponse: tempsDeReponse,
     tempsDiffusion: tempsDiffusion,
-    nombreFourier: nombreFourier
+    nombreFourier: nombreFourier,
+    resumerSimulation: resumerSimulation
   };
   global.ConfortTransitoire = ConfortTransitoire;
   if (typeof module !== 'undefined' && module.exports) module.exports = ConfortTransitoire;

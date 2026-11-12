@@ -19,10 +19,15 @@
   const P = window.ConfortParois;
   const G = window.ConfortGraphiques;
   const A = window.ConfortAtelier;
+  const So = window.ConfortSoleil;        // chapitre 2 : la météo et le soleil (scénario « vraie météo »)
+  const R5 = window.ConfortCinqR1C;       // chapitre 3 : le sol sous la dalle (plancher bas)
+  const V = window.CONFORT_METEO_VILLES;
+  const X = window.CONFORT_PROJET;
+  const VERSION = ((document.currentScript && document.currentScript.src) || '').split('?v=')[1] || '';
   const esc = BAO.echapper;
   const nb = BAO.nombre;
   const $ = function (s) { return document.querySelector(s); };
-  if (!T || !A || !$('#labo')) return;
+  if (!T || !A || !So || !R5 || !V || !$('#labo')) return;
 
   // Dimensions du dessin (unités du viewBox). Écran étroit : dessin moins large, donc plus grand à l'écran.
   let L = 900, PIECE = 160, DEHORS = 160, MUR = 580;
@@ -50,19 +55,25 @@
     { materiau: 'enduit-ciment', e: 0.015, nom: 'Enduit' }
   ];
   const VITESSES = [{ id: 1, nom: '×1' }, { id: 3, nom: '×3' }, { id: 8, nom: '×8' }];
-  const SCENARIOS = [{ id: 'echelon', nom: '🔥 Coup de chaud' }, { id: 'journee', nom: '🌗 Jour / nuit' }];
+  const SCENARIOS = [{ id: 'meteo', nom: '☀ Vraie météo' }, { id: 'echelon', nom: '🔥 Coup de chaud' }, { id: 'journee', nom: '🌗 Jour / nuit' }];
+  const DEBUTS = [{ id: 'semaine', nom: 'Semaine la plus chaude' }, { id: 172, nom: '21 juin' }, { id: 202, nom: '21 juillet' }, { id: 227, nom: '15 août' }];
+  const ORIENTATIONS = [{ id: 0, nom: 'N' }, { id: 45, nom: 'NE' }, { id: 90, nom: 'E' }, { id: 135, nom: 'SE' }, { id: 180, nom: 'S' }, { id: 225, nom: 'SO' }, { id: 270, nom: 'O' }, { id: 315, nom: 'NO' }];
+  const PRECHAUFFAGE_JOURS = 4;
   const PIECES = [{ id: 'fixe', nom: '❄️ Pièce climatisée' }, { id: 'libre', nom: '🏠 Pièce libre' }];
 
   // Réglages d'affichage du labo (dans le navigateur, hors sauvegarde : ce ne sont pas des données de calcul).
   const CLE = 'bao.confort.labo.affichage';
   const DEFAUT = {
-    scenario: 'echelon', tAvant: 20, tApres: 35, duree: 48,
-    piece: 'fixe', tInterieure: 20, aireMur: 10, volume: 50, renouvellement: 0.5, mobilier: 0, vitesse: 3
+    scenario: 'meteo', tAvant: 20, tApres: 35, duree: 48,
+    // Vraie météo : ville (null = celle du projet), début, nombre de jours, orientation (azimut), pente du toit, couleur (α).
+    ville: null, debut: 'semaine', jours: 5, orientation: 270, pente: 35, couleur: 'moyenne',
+    piece: 'libre', tInterieure: 24, aireMur: 10, volume: 50, renouvellement: 0.5, mobilier: 0, vitesse: 3
   };
   let reglage = Object.assign({}, DEFAUT, BAO.lire(CLE, {}) || {});
   function sauverReglage() { try { localStorage.setItem(CLE, JSON.stringify(reglage)); } catch (e) { /* rien */ } }
 
   let sim = null, position = 0, enCours = false, dernierInstant = null;
+  let meteo = null, villeChargee = null;   // la météo du scénario « vraie météo »
   let selection = null, glisse = null, glissePalette = null, rendu = null, echelleT = null;
   let particules = [];
 
@@ -75,34 +86,83 @@
     return brutes;
   }
 
+  /* ---------- La vraie météo : ce que « voit » la face extérieure, heure par heure ----------
+     Mur et toiture : la température sol-air (chapitre 2, air + soleil absorbé − ciel froid), selon l'orientation,
+     la pente et la couleur. Plancher bas : le sol sous la dalle (chapitre 3, (H)). En heure légale. */
+  function ville() {
+    const id = reglage.ville || (window.ConfortProjet ? window.ConfortProjet.projet().ville : null) || X.villeParDefaut;
+    return V.villes.find(function (v) { return v.id === id; }) || V.villes[0];
+  }
+  function jourDebut(m) {
+    if (reglage.debut === 'semaine') {
+      const s = So.semaineLaPlusChaude(m.T, (So.jourDeLAnnee(6, 1) - 1) * 24, So.jourDeLAnnee(9, 30) * 24);
+      return s.debut / 24 + 1;
+    }
+    return Number(reglage.debut);
+  }
+  function scenarioMeteo(m) {
+    const nature = A.nature();
+    const v = ville(), j0 = jourDebut(m), jours = Number(reglage.jours);
+    const decal = So.decalageLegal(j0);
+    const k0 = (j0 - 1) * 24 - decal - PRECHAUFFAGE_JOURS * 24, k1 = k0 + PRECHAUFFAGE_JOURS * 24 + jours * 24 + 1;
+    const alpha = (X.couleurs.find(function (c) { return c.id === reglage.couleur; }) || X.couleurs[1]).alpha;
+    let valeurs;
+    if (nature === 'plancher') {
+      const sol = R5.temperatureSol(m.T, X.sol).serie;
+      valeurs = new Float64Array(k1 - k0);
+      for (let i = 0; i < valeurs.length; i++) valeurs[i] = sol[((k0 + i) % 8760 + 8760) % 8760];
+    } else {
+      const inclinaison = nature === 'toiture' ? Number(reglage.pente) : 90;
+      valeurs = So.serieSolAir(m, { lat: v.lat, lon: v.lon }, inclinaison, Number(reglage.orientation), alpha, k0, k1);
+    }
+    const air = new Float64Array(k1 - k0);
+    for (let i = 0; i < air.length; i++) air[i] = m.T[((k0 + i) % 8760 + 8760) % 8760];
+    return { type: 'serie', origine: -PRECHAUFFAGE_JOURS * 24, valeurs: valeurs, air: { type: 'serie', origine: -PRECHAUFFAGE_JOURS * 24, valeurs: air },
+      jourDebut: j0, ville: v, nature: nature, alpha: alpha, duree: jours * 24 };
+  }
+
   function lancerCalcul() {
     const couches = couchesPhysiques();
     if (!couches) { sim = null; dessinerTout(); return; }
     const p = A.paroi();
     const rs = P.resistancesSuperficielles(p.sensFlux, p.type === 'interieure');
     const onde = A.onde();
-    const scenario = reglage.scenario === 'echelon'
-      ? { type: 'echelon', tAvant: Number(reglage.tAvant), tApres: Number(reglage.tApres) }
-      : { type: 'journee', tMoyenne: Number(onde.tMoyenne), amplitude: Number(onde.amplitude), heureMax: Number(onde.heureMax) };
+    let scenario, duree = Number(reglage.duree);
+    if (reglage.scenario === 'meteo') {
+      const v = ville();
+      if (!meteo || villeChargee !== v.id) {
+        V.charger(v.id, function (m) { meteo = m; villeChargee = v.id; lancerCalcul(); }, VERSION, function () { BAO.notifier('La météo de ' + v.nom + ' n\'a pas pu être chargée.'); });
+        return;
+      }
+      scenario = scenarioMeteo(meteo);
+      duree = scenario.duree;
+    } else if (reglage.scenario === 'echelon') scenario = { type: 'echelon', tAvant: Number(reglage.tAvant), tApres: Number(reglage.tApres) };
+    else scenario = { type: 'journee', tMoyenne: Number(onde.tMoyenne), amplitude: Number(onde.amplitude), heureMax: Number(onde.heureMax) };
     sim = T.simuler({
-      couches: couches, rs: rs, scenario: scenario,
+      couches: couches, rs: rs, scenario: scenario, prechauffageJours: PRECHAUFFAGE_JOURS,
       piece: { mode: reglage.piece, tInterieure: Number(reglage.tInterieure), aireMur: Number(reglage.aireMur), volume: Number(reglage.volume),
         renouvellement: Number(reglage.renouvellement), capaciteMobilier: Number(reglage.mobilier) * 1000 },
-      dureeHeures: Number(reglage.duree), pasSecondes: 60, sortieMinutes: 60 / IMAGES_PAR_HEURE
+      dureeHeures: duree, pasSecondes: 60, sortieMinutes: 60 / IMAGES_PAR_HEURE
     });
     sim.couches = couches;
     sim.rs = rs;
+    sim.scenario = scenario;
+    sim.duree = duree;
+    // Vraie météo : l'air dehors (la paroi, elle, voit le sol-air) pour le graphique et la lecture.
+    sim.tAir = scenario.type === 'serie' ? sim.temps.map(function (h) { return T.temperatureExterieure(scenario.air, h); }) : null;
     let mn = Infinity, mx = -Infinity;
     sim.profils.forEach(function (pr, i) {
       pr.concat([sim.tExt[i], sim.tPiece[i]]).forEach(function (v) { if (v < mn) mn = v; if (v > mx) mx = v; });
     });
     if (mx - mn < 2) { mn -= 1; mx += 1; }
     echelleT = [Math.floor(mn - 0.5), Math.ceil(mx + 0.5)];
-    position = Math.min(position, Number(reglage.duree));
-    $('#labo-temps').max = String(Number(reglage.duree) * IMAGES_PAR_HEURE);
+    position = Math.min(position, duree);
+    $('#labo-temps').max = String(duree * IMAGES_PAR_HEURE);
     semerParticules();
     dessinerGraphe();
     dessinerTout();
+    // L'onglet « Ma paroi » (affichage/paroi.js) lit la simulation pour le verdict.
+    document.dispatchEvent(new CustomEvent('confort:labo', { detail: { sim: sim, reglage: reglage } }));
   }
   let attente = null;
   function recalculer() { clearTimeout(attente); attente = setTimeout(lancerCalcul, 120); }
@@ -229,7 +289,8 @@
     const xs = L - DEHORS / 2;
     s += jour ? soleil(xs, HAUT + 24) : lune(xs, HAUT + 24);
     s += '<text x="' + xs + '" y="' + (HAUT + 92) + '" text-anchor="middle" class="labo-t-grande">' + nb(te, 1) + '°</text>';
-    s += '<text x="' + xs + '" y="' + (HAUT + 112) + '" text-anchor="middle" class="labo-legende">dehors</text>';
+    s += '<text x="' + xs + '" y="' + (HAUT + 112) + '" text-anchor="middle" class="labo-legende">' + (sim.scenario.type === 'serie' ? (sim.scenario.nature === 'plancher' ? 'sol sous la dalle' : 'dehors · sol-air ☀') : 'dehors') + '</text>';
+    if (sim.tAir) s += '<text x="' + xs + '" y="' + (HAUT + 128) + '" text-anchor="middle" class="labo-legende">air ' + nb(sim.tAir[i], 1) + '°</text>';
     // La pièce : sa température et la chaleur qui entre.
     const xp = PIECE / 2;
     s += '<text x="' + xp + '" y="' + (HAUT + 44) + '" text-anchor="middle" class="labo-legende">' + (reglage.piece === 'libre' ? 'pièce' : 'pièce (climatisée)') + '</text>';
@@ -326,7 +387,7 @@
   function dessinerHorloge() {
     if (!sim) return;
     const i = imageCourante(), h = sim.temps[i];
-    $('#labo-jour').textContent = 'Jour ' + (Math.floor(h / 24) + 1);
+    $('#labo-jour').textContent = sim.scenario.type === 'serie' ? So.dateDuJour(sim.scenario.jourDebut + Math.floor(h / 24)).nom : 'Jour ' + (Math.floor(h / 24) + 1);
     $('#labo-heure').textContent = Math.floor(h % 24) + ' h ' + String(Math.round((h % 1) * 60) % 60).padStart(2, '0');
     $('#labo-temps').value = String(i);
     if (rendu) {
@@ -352,6 +413,13 @@
       lecture = reglage.piece === 'libre'
         ? 'La pièce fait la moitié du chemin vers sa température finale en <b>' + t + '</b>.'
         : 'La face intérieure fait la moitié de sa montée en <b>' + t + '</b>. À très long terme, le flux tend vers U × ΔT = ' + nb(d.U, 3) + ' × ' + nb(Number(reglage.tApres) - Number(reglage.tInterieure), 1) + ' = <b>' + nb(d.U * (Number(reglage.tApres) - Number(reglage.tInterieure)), 1) + ' W/m²</b>.';
+    } else if (reglage.scenario === 'meteo') {
+      const r = T.resumerSimulation(sim, 0), sc = sim.scenario;
+      lecture = (sc.nature === 'plancher'
+        ? 'Le sol sous la dalle reste à <b>' + nb(r.tExt.min, 1) + ' à ' + nb(r.tExt.max, 1) + ' °C</b> (H) : le plancher bas est le seul « froid » gratuit de la maison.'
+        : 'À ' + esc(sc.ville.nom) + ', la face extérieure (' + (sc.nature === 'toiture' ? 'toit à ' + nb(reglage.pente) + '°' : 'façade ' + (ORIENTATIONS.find(function (o) { return o.id === Number(reglage.orientation); }) || {}).nom) + ', α = ' + nb(sc.alpha, 1) + ') voit une température sol-air qui monte à <b>' + nb(r.tExt.max, 1) + ' °C</b> ; la face intérieure, à <b>' + nb(r.tSi.max, 1) + ' °C</b>' +
+          (r.dephasageObserve !== null ? ', <b>' + nb(r.dephasageObserve, 1) + ' h</b> après (matrices : ' + nb(d.dephasage, 1) + ' h)' : '') + '.') +
+        ' Flux de pointe qui entre : <b>' + nb(r.flux.max, 1) + ' W/m²</b>.';
     } else {
       lecture = 'Le pic de chaleur arrive environ <b>' + nb(d.dephasage, 1) + ' h</b> après le pic dehors, réduit à <b>' + nb(d.amortissement * 100, 0) + ' %</b> de ce que donnerait U seul.';
     }
@@ -362,15 +430,18 @@
   function dessinerGraphe() {
     if (!sim) { $('#labo-graphe').innerHTML = ''; rendu = null; return; }
     const serie = function (v) { return sim.temps.map(function (t, i) { return { x: t, y: v[i] }; }); };
-    const duree = Number(reglage.duree);
+    const duree = sim.duree, vraie = sim.scenario.type === 'serie';
+    const series = [
+      { nom: vraie ? (sim.scenario.nature === 'plancher' ? 'Sol sous la dalle (H)' : 'Dehors, sol-air (air + soleil)') : 'Dehors', classe: 'gr-1', points: serie(sim.tExt) },
+      { nom: reglage.piece === 'libre' ? 'Air de la pièce' : 'Pièce (fixée)', classe: 'gr-2', points: serie(sim.tPiece) },
+      { nom: 'Face intérieure de la paroi', classe: 'gr-ref', points: serie(sim.tSi) }
+    ];
+    if (sim.tAir && sim.scenario.nature !== 'plancher') series.push({ nom: 'Air dehors (météo)', classe: 'gr-essai', points: serie(sim.tAir) });
     rendu = G.dessiner($('#labo-graphe'), {
       id: 'labo', titre: 'Températures pendant la simulation', unite: '°C',
-      x: { min: 0, max: duree, pas: duree > 48 ? 24 : 12, format: function (v) { return nb(v) + ' h'; } },
-      series: [
-        { nom: 'Dehors', classe: 'gr-1', points: serie(sim.tExt) },
-        { nom: reglage.piece === 'libre' ? 'Air de la pièce' : 'Pièce (fixée)', classe: 'gr-2', points: serie(sim.tPiece) },
-        { nom: 'Face intérieure du mur', classe: 'gr-ref', points: serie(sim.tSi) }
-      ]
+      x: { min: 0, max: duree, pas: duree > 48 ? 24 : 12, format: function (v) { return vraie ? (v < duree ? 'J' + (v / 24 + 1) : '') : nb(v) + ' h'; },
+        formatBulle: vraie ? function (v) { return So.dateDuJour(sim.scenario.jourDebut + Math.floor(v / 24)).nom + ' · ' + nb(v % 24) + ' h'; } : undefined },
+      series: series
     });
     const svg = document.querySelector('#labo-graphe svg');
     if (svg) svg.insertAdjacentHTML('beforeend', '<line class="labo-curseur" x1="0" x2="0" y1="14" y2="216"/>');
@@ -400,9 +471,28 @@
       return '<label class="champ"><span class="etiquette">' + nom + '</span><span class="labo-saisie"><input type="text" inputmode="decimal" data-reglage="' + cle + '" value="' + esc(BAO.versChamp(reglage[cle])) + '"><small>' + unite + '</small></span></label>';
     };
     const onde = A.onde();
-    $('#labo-champs-scenario').innerHTML = reglage.scenario === 'echelon'
-      ? champ('tAvant', 'Dehors avant', '°C') + champ('tApres', 'Dehors après', '°C') + champ('duree', 'Durée', 'h')
-      : '<p class="aide" style="margin:0;flex-basis:100%">Journées de l\'atelier : ' + nb(onde.tMoyenne, 1) + ' ± ' + nb(onde.amplitude, 1) + ' °C, maximum à ' + nb(onde.heureMax, 1) + ' h (réglage « Une journée chaude », plus bas).</p>' + champ('duree', 'Durée', 'h');
+    // Un choix à boutons (orientation, couleur, début) : data-mreglage = la clé, data-valeur = la valeur.
+    const choix = function (cle, nom, liste, val) {
+      return '<div class="champ labo-choix-bloc"><span class="etiquette">' + nom + '</span><div class="segments" role="group" aria-label="' + nom + '">' +
+        liste.map(function (x) { return '<button type="button" data-mreglage="' + cle + '" data-valeur="' + x.id + '" aria-pressed="' + (String(x.id) === String(val)) + '"><span>' + esc(x.nom) + '</span></button>'; }).join('') + '</div></div>';
+    };
+    if (reglage.scenario === 'meteo') {
+      const nature = A.nature(), v = ville();
+      $('#labo-champs-scenario').innerHTML =
+        '<label class="champ"><span class="etiquette">Ville (météo PVGIS)</span><select data-mselect="ville" aria-label="Ville">' +
+          V.villes.map(function (x) { return '<option value="' + x.id + '"' + (x.id === v.id ? ' selected' : '') + '>' + esc(x.nom) + '</option>'; }).join('') + '</select></label>' +
+        choix('debut', 'À partir de', DEBUTS, reglage.debut) + champ('jours', 'Jours', 'j') +
+        (nature === 'plancher'
+          ? '<p class="aide" style="margin:0;flex-basis:100%">Plancher bas : la face extérieure est le <b>sol sous la dalle</b>, pris à la moyenne annuelle de l\'air, amortie et retardée (H, Méthode § 30). Pas de soleil.</p>'
+          : choix('orientation', nature === 'toiture' ? 'Le pan regarde vers' : 'La façade regarde vers', ORIENTATIONS, reglage.orientation) +
+            (nature === 'toiture' ? champ('pente', 'Pente du toit', '°') : '') +
+            choix('couleur', 'Couleur extérieure (α)', X.couleurs.map(function (c) { return { id: c.id, nom: c.nom + ' ' + nb(c.alpha, 1) }; }), reglage.couleur) +
+            '<p class="aide" style="margin:0;flex-basis:100%">La face extérieure voit la température <b>sol-air</b> : l\'air + le soleil absorbé (α × Rse × I) − le ciel froid (Méthode § 24 et § 36). Heure légale.</p>');
+    } else {
+      $('#labo-champs-scenario').innerHTML = reglage.scenario === 'echelon'
+        ? champ('tAvant', 'Dehors avant', '°C') + champ('tApres', 'Dehors après', '°C') + champ('duree', 'Durée', 'h')
+        : '<p class="aide" style="margin:0;flex-basis:100%">Journées de l\'atelier : ' + nb(onde.tMoyenne, 1) + ' ± ' + nb(onde.amplitude, 1) + ' °C, maximum à ' + nb(onde.heureMax, 1) + ' h (réglage « Une journée chaude », dans l\'atelier).</p>' + champ('duree', 'Durée', 'h');
+    }
     $('#labo-champs-piece').innerHTML = champ('tInterieure', reglage.piece === 'libre' ? 'Pièce au départ' : 'Pièce', '°C') +
       (reglage.piece === 'libre' ? champ('aireMur', 'Surface de ce mur', 'm²') + champ('volume', 'Volume', 'm³') +
         champ('renouvellement', 'Air neuf', 'vol/h') + champ('mobilier', 'Mobilier (H)', 'kJ/K') : '');
@@ -578,8 +668,9 @@
     $('#labo-temps').addEventListener('input', function (e) { arreter(); position = Number(e.target.value) / IMAGES_PAR_HEURE; dessinerScene(); dessinerHorloge(); dessinerMesures(); });
 
     $('#labo').addEventListener('click', function (e) {
-      const b = e.target.closest('button[data-scenario], button[data-piece], button[data-vitesse]');
+      const b = e.target.closest('button[data-scenario], button[data-piece], button[data-vitesse], button[data-mreglage]');
       if (!b) return;
+      if (b.dataset.mreglage) { const v = b.dataset.valeur; reglage[b.dataset.mreglage] = isFinite(Number(v)) && v !== '' ? Number(v) : v; }
       if (b.dataset.scenario) { reglage.scenario = b.dataset.scenario; position = 0; }
       if (b.dataset.piece) reglage.piece = b.dataset.piece;
       if (b.dataset.vitesse) reglage.vitesse = Number(b.dataset.vitesse);
@@ -588,12 +679,13 @@
       if (!b.dataset.vitesse) recalculer();
     });
     $('#labo').addEventListener('change', function (e) {
+      if (e.target.dataset.mselect === 'ville') { reglage.ville = e.target.value; sauverReglage(); position = 0; recalculer(); return; }
       const cle = e.target.dataset.reglage;
       if (!cle) return;
       const v = BAO.lireNombre(e.target.value);
       const temperature = ['tAvant', 'tApres', 'tInterieure'].indexOf(cle) !== -1;
-      const positif = ['duree', 'aireMur', 'volume'].indexOf(cle) !== -1;
-      if (!isFinite(v) || (positif && v <= 0) || (!temperature && v < 0) || (cle === 'duree' && v > 240)) {
+      const positif = ['duree', 'aireMur', 'volume', 'jours'].indexOf(cle) !== -1;
+      if (!isFinite(v) || (positif && v <= 0) || (!temperature && v < 0) || (cle === 'duree' && v > 240) || (cle === 'jours' && v > 14) || (cle === 'pente' && v > 70)) {
         BAO.notifier('Valeur invalide.'); dessinerReglages(); return;
       }
       reglage[cle] = v;
@@ -603,12 +695,15 @@
 
     document.addEventListener('confort:paroi', function () {
       if (selection !== null && selection >= A.paroi().couches.length) selection = null;
+      dessinerReglages();   // la nature (mur / toiture / plancher) change les réglages de la vraie météo
       recalculer();
     });
+    // La ville du projet a changé : le labo « vraie météo » suit, s'il n'a pas sa propre ville.
+    document.addEventListener('confort:projet', function () { if (reglage.scenario === 'meteo' && !reglage.ville) { dessinerReglages(); recalculer(); } });
     document.addEventListener('confort:donnees', dessinerPalette);
     if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { lirePalette(); dessinerTout(); });
     window.addEventListener('resize', function () { if (!enCours) { semerParticules(); dessinerScene(); } });
-    document.querySelectorAll('[data-onglet="atelier"]').forEach(function (b) { b.addEventListener('click', function () { setTimeout(function () { semerParticules(); dessinerScene(); }, 0); }); });
+    document.querySelectorAll('[data-onglet="paroi"]').forEach(function (b) { b.addEventListener('click', function () { setTimeout(function () { semerParticules(); dessinerScene(); }, 0); }); });
   }
 
   lirePalette();

@@ -6,8 +6,8 @@
   <title>Simulateur de confort d'été</title>
   <meta name="description" content="Simulateur de confort d'été transparent : maison en 3D, parois couche par couche (NF EN ISO 13786), déperditions, inertie, et bientôt une note de confort multicritère (Givoni, degrés-heures, confort adaptatif).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="commun/style.css?v=20261112">
-  <link rel="stylesheet" href="affichage/site.css?v=20261112">
+  <link rel="stylesheet" href="commun/style.css?v=20261112b">
+  <link rel="stylesheet" href="affichage/site.css?v=20261112b">
 </head>
 <body class="appli">
 
@@ -19,6 +19,7 @@
     </a>
     <nav class="onglets" role="tablist" aria-label="Sections de l'outil">
       <button data-onglet="calcul">Projet</button>
+      <button data-onglet="paroi">Ma paroi</button>
       <button data-onglet="atelier">Atelier parois <span class="puce-expert">expert</span></button>
       <button data-onglet="methode">Méthode</button>
       <button data-onglet="donnees">Données</button>
@@ -133,10 +134,17 @@
   </section>
 
 
-  <!-- ===================== ONGLET ATELIER PAROIS (mode expert) ===================== -->
-  <section class="panneau" id="onglet-atelier" role="tabpanel" hidden>
-    <div class="bandeau-expert"><b>Atelier parois · mode expert.</b> Décris une paroi couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), puis l'inertie d'un local (NF EN ISO 13790). Les parois que tu enregistres ici apparaissent dans les listes du projet.</div>
-
+  <!-- ===================== ONGLET MA PAROI (mode simple) ===================== -->
+  <section class="panneau" id="onglet-paroi" role="tabpanel" hidden>
+    <div class="carte paroi-choix">
+      <div class="carte-titre"><h2>Ma paroi, l'été</h2><span class="aide">Une paroi, tes matériaux, la vraie météo : est-elle bonne pour le confort d'été ?</span></div>
+      <div class="nature-cartes" id="paroi-nature" role="group" aria-label="Nature de la paroi"></div>
+      <div class="paroi-ligne">
+        <select id="paroi-modele" aria-label="Partir d'un modèle"></select>
+        <div class="paroi-composition" id="paroi-composition"></div>
+        <a class="lien-expert" href="#" data-vers="atelier">Mode expert : l'atelier (couches, matrices, inertie du local) →</a>
+      </div>
+    </div>
     <div class="carte labo" id="labo">
       <div class="labo-tete">
         <h2>Le labo</h2>
@@ -165,6 +173,16 @@
       <div id="labo-mesures"></div>
       <details class="labo-courbes"><summary>Les courbes dans le temps</summary><div id="labo-graphe"></div></details>
     </div>
+    <div class="carte" id="paroi-verdict-carte">
+      <div class="carte-titre"><h2>Confort d'été de cette paroi</h2><span class="aide">repères courants (H) · Méthode § 36</span></div>
+      <div id="paroi-verdict"></div>
+    </div>
+  </section>
+
+  <!-- ===================== ONGLET ATELIER PAROIS (mode expert) ===================== -->
+  <section class="panneau" id="onglet-atelier" role="tabpanel" hidden>
+    <div class="bandeau-expert"><b>Atelier parois · mode expert.</b> Décris une paroi couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), puis l'inertie d'un local (NF EN ISO 13790). Le labo animé est dans l'onglet <b>Ma paroi</b> (même paroi). Les parois que tu enregistres ici apparaissent dans les listes du projet.</div>
+
     <div class="grille-2">
       <div>
         <div class="carte">
@@ -284,7 +302,7 @@
   <!-- ===================== ONGLET MÉTHODE ===================== -->
   <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
     <div class="carte methode">
-      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute. <b>Chapitre 2</b> (sections 20 à 27) : la météo, le soleil sur chaque paroi et toute la chaleur qui entre dans la maison. <b>Chapitre 3</b> (sections 28 à 35) : le modèle horaire 5R1C, la température qu'il fait dedans heure par heure.</p>
+      <p class="aide" style="margin:0 0 10px"><b>Chapitre 1</b> (sections 1 à 13) : une paroi, couche par couche. <b>Chapitre 1 bis</b> (sections 14 à 18) : la maison entière, sa géométrie, ses déperditions et son inertie, et comment on la dessine en 3D. <b>Chapitre 1 ter</b> (section 19) : le labo, la chaleur qui avance minute par minute. <b>Chapitre 2</b> (sections 20 à 27) : la météo, le soleil sur chaque paroi et toute la chaleur qui entre dans la maison. <b>Chapitre 3</b> (sections 28 à 35) : le modèle horaire 5R1C, la température qu'il fait dedans heure par heure. <b>Ma paroi</b> (section 36) : une paroi seule dans la vraie météo, et ses repères.</p>
       <h2>1. Ce qu'on cherche</h2>
       <p>L'hiver, on veut savoir <b>combien</b> de chaleur s'en va : c'est U, un calcul en <b>régime permanent</b> (on suppose que les températures ne bougent pas). L'été, la question change : dehors, la température <b>monte et descend chaque jour</b> et le soleil chauffe les façades. Une paroi lourde ne laisse pas passer cette onde tout de suite : elle en <b>stocke</b> une partie, la <b>retarde</b> et l'<b>écrase</b>. Deux murs de même U peuvent donc donner des pièces très différentes l'été.</p>
       <p>Cette étape calcule, pour une paroi décrite couche par couche :</p>
@@ -784,17 +802,35 @@ Juin → septembre (année type, été normal)       pic opérative   moyenne   
       <p><b>Limites (H)</b> : une seule zone (pas de pièce plus chaude que les autres, pas d'étage sous toit) ; une seule masse (les parois sont des conductances pures : pas de déphasage « visible » heure par heure, ce sera l'étape 8) ; coefficients 3,45 / 9,1 / 4,5 / 0,3–0,7 de l'annexe C non vérifiés dans le texte ; sol sous la dalle, infiltrations n<sub>50</sub>/20, débits et règle d'ouverture des fenêtres : hypothèses ; air neuf à la température extérieure (pas de double flux, de puits canadien ni de brasseur d'air) ; pas de chauffage ni de climatisation (évolution libre) ; année type = été normal, pas de canicule. Le combles perdu n'est pas une zone tampon (chapitre 2).</p>
       <p><b>Et ensuite (étape 4).</b> On a maintenant 3 672 températures opératives par été. Il reste à les <b>juger</b> : heures au-dessus de 28 °C, degrés-heures, confort adaptatif (la température de confort suit la température extérieure des jours précédents), PMV / PPD, Givoni, nuits chaudes, et la note sur 10 dont on verra chaque point.</p>
 
-      <h2>36. Teste-toi</h2>
+      <h2>36. Ma paroi : le labo en vraie météo et les repères (H)</h2>
+      <p>L'onglet <b>Ma paroi</b> prend une seule paroi (mur extérieur, toiture ou plancher bas), tes couches, et la met dans la <b>vraie météo</b> du chapitre 2 avec le labo du chapitre 1 ter. Ce que voit la face extérieure, heure par heure, c'est la <b>température sol-air</b> : la température fictive de l'air qui donnerait à la paroi le même flux que l'air réel + le soleil absorbé − le rayonnement vers le ciel froid. C'est la formule de l'apport opaque (§ 24) divisée par U × A :</p>
+      <div class="formule">θsa = T + α × Rse × I − Fciel × Rse × hr × Δθer        [°C] + [m²·K/W] × [W/m²] = °C
+Mur moyen (α 0,6) à 500 W/m², air à 30 °C : 30 + 0,6 × 0,04 × 500 − 0,5 × 0,04 × 4,5 × 11 = 30 + 12,0 − 1,0 = 41,0 °C
+Tuile sombre (α 0,8) à 900 W/m², toit à 35° : 30 + 28,8 − 1,8 = 57,0 °C   (c'est pour ça que les combles sont des fours)</div>
+      <p>Pour un <b>plancher bas</b>, la face extérieure est le <b>sol sous la dalle</b> (§ 30, (H)) : pas de soleil, une température presque constante, fraîche l'été. Le calcul commence 4 jours avant la période affichée (préchauffage), en heure légale, à partir de la semaine la plus chaude de la ville ou d'un jour choisi. La pièce peut être « libre » (elle n'échange qu'à travers cette paroi et par son air neuf : les autres parois sont supposées parfaites (H)) ou fixée.</p>
+      <p><b>Les repères.</b> Pour lire une paroi d'un coup d'œil, six repères à trois niveaux (bon / moyen / faible). Ce ne sont <b>pas des exigences de norme</b> : des ordres de grandeur courants des guides bioclimatiques et des règles Th-I / RE2020, tous marqués <b>(H)</b> et visibles dans Données. La note multicritère de la <em>maison</em> (étape 4) sera fixée avec Émile ; ici il ne s'agit que de la paroi seule.</p>
+      <div class="defilement"><table class="tableau-dim"><thead><tr><th>Repère</th><th>Bon</th><th>Moyen</th><th>Pourquoi</th></tr></thead><tbody>
+        <tr><td>Déphasage Δt</td><td>≥ 10 h</td><td>≥ 6 h</td><td>Le pic de 15 h arrive après 1 h du matin : on peut l'évacuer en ventilant.</td></tr>
+        <tr><td>Amortissement f</td><td>≤ 0,10</td><td>≤ 0,30</td><td>Il reste moins de 10 % de l'onde qu'aurait une paroi sans masse de même U.</td></tr>
+        <tr><td>κ1 côté pièce</td><td>≥ 50 kJ/(m²·K)</td><td>≥ 20</td><td>La paroi encaisse la journée (apports de la pièce, soleil par les vitres).</td></tr>
+        <tr><td>U</td><td>≤ 0,25 (toiture 0,15)</td><td>≤ 0,5 (0,3)</td><td>Ce qui entre en moyenne ; une toiture non isolée fait entrer tout le sol-air.</td></tr>
+        <tr><td>Face intérieure − air</td><td>≤ 1 °C</td><td>≤ 3 °C</td><td>Ce qu'on ressent par rayonnement (température opérative, § 28). Labo « vraie météo ».</td></tr>
+        <tr><td>Flux de pointe</td><td>≤ 5 W/m²</td><td>≤ 15 W/m²</td><td>La chaleur qui entre au pire moment. Labo « vraie météo ».</td></tr>
+      </tbody></table></div>
+      <p>Le verdict compte 2 points par repère bon, 1 par moyen : « bonne paroi » à partir de 75 %, « faible » sous 40 % (H). Le labo donne aussi le <b>déphasage observé</b> (pic à pic) et l'<b>amortissement observé</b> : sur une sinusoïde ils rejoignent les matrices du chapitre 1 ; sur une vraie météo, ils s'en écartent un peu (plusieurs jours chauds de suite, nuages).</p>
+
+      <h2>37. Teste-toi</h2>
       <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
       <div id="teste-toi"></div>
 
-      <h2>37. Où est le code</h2>
+      <h2>38. Où est le code</h2>
       <ul>
         <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
         <li><code>calcul/calcul-batiment.js</code> : chapitre 1 bis, la maison (surfaces, H, inertie).</li>
         <li><code>calcul/calcul-transitoire.js</code> : chapitre 1 ter, le labo (différences finies, schéma implicite, la pièce).</li>
         <li><code>calcul/calcul.js</code> : le sommaire des chapitres.</li>
-        <li><code>affichage/labo.js</code> : le labo animé (dessin, glisser-déposer, horloge ; aucun calcul).</li>
+        <li><code>affichage/labo.js</code> : le labo animé (dessin, glisser-déposer, horloge, scénario « vraie météo » ; aucun calcul).</li>
+        <li><code>affichage/paroi.js</code> : l'onglet Ma paroi (nature, modèles, verdict et repères (H) ; aucun calcul).</li>
         <li><code>affichage/maison3d.js</code> : la maquette 3D (projection, faces visibles, fenêtres, rotation).</li>
         <li><code>affichage/projet.js</code> : l'onglet Projet (saisie, résultats ; aucun calcul).</li>
         <li><code>affichage/schemas.js</code> et <code>affichage/graphiques.js</code> : les dessins (aucun calcul).</li>
@@ -876,6 +912,8 @@ Juin → septembre (année type, été normal)       pic opérative   moyenne   
       <div class="defilement"><table id="table-soleil"></table></div>
       <h3 style="margin-top:14px">Modèle horaire 5R1C et air (chapitre 3) <span class="badge exemple">(H) à vérifier</span></h3>
       <div class="defilement"><table id="table-5r1c"></table></div>
+      <h3 style="margin-top:14px">Repères de confort d'une paroi (onglet Ma paroi) <span class="badge exemple">(H) repères courants, pas une norme</span></h3>
+      <div class="defilement"><table id="table-reperes"></table></div>
     </div>
   </section>
 </main>
@@ -884,25 +922,26 @@ Juin → septembre (année type, été normal)       pic opérative   moyenne   
   Outil personnel d'aide à l'audit énergétique. Ordres de grandeur pour comprendre et comparer des variantes ; la STD reste la référence.
 </footer>
 
-<script src="commun/commun.js?v=20261112"></script>
-<script src="donnees/confort-materiaux.js?v=20261112"></script>
-<script src="donnees/confort-projet.js?v=20261112"></script>
-<script src="donnees/confort-meteo.js?v=20261112"></script>
-<script src="calcul/calcul-parois.js?v=20261112"></script>
-<script src="calcul/calcul-batiment.js?v=20261112"></script>
-<script src="calcul/calcul-transitoire.js?v=20261112"></script>
-<script src="calcul/calcul-soleil.js?v=20261112"></script>
-<script src="calcul/calcul-5r1c.js?v=20261112"></script>
-<script src="calcul/calcul.js?v=20261112"></script>
-<script src="affichage/schemas.js?v=20261112"></script>
-<script src="affichage/graphiques.js?v=20261112"></script>
-<script src="affichage/exercices.js?v=20261112"></script>
-<script src="donnees/lexique.js?v=20261112"></script>
-<script src="affichage/maison3d.js?v=20261112"></script>
-<script src="affichage/interface.js?v=20261112"></script>
-<script src="affichage/labo.js?v=20261112"></script>
-<script src="affichage/projet.js?v=20261112"></script>
-<script src="affichage/soleil.js?v=20261112"></script>
-<script src="affichage/confort.js?v=20261112"></script>
+<script src="commun/commun.js?v=20261112b"></script>
+<script src="donnees/confort-materiaux.js?v=20261112b"></script>
+<script src="donnees/confort-projet.js?v=20261112b"></script>
+<script src="donnees/confort-meteo.js?v=20261112b"></script>
+<script src="calcul/calcul-parois.js?v=20261112b"></script>
+<script src="calcul/calcul-batiment.js?v=20261112b"></script>
+<script src="calcul/calcul-transitoire.js?v=20261112b"></script>
+<script src="calcul/calcul-soleil.js?v=20261112b"></script>
+<script src="calcul/calcul-5r1c.js?v=20261112b"></script>
+<script src="calcul/calcul.js?v=20261112b"></script>
+<script src="affichage/schemas.js?v=20261112b"></script>
+<script src="affichage/graphiques.js?v=20261112b"></script>
+<script src="affichage/exercices.js?v=20261112b"></script>
+<script src="donnees/lexique.js?v=20261112b"></script>
+<script src="affichage/maison3d.js?v=20261112b"></script>
+<script src="affichage/interface.js?v=20261112b"></script>
+<script src="affichage/projet.js?v=20261112b"></script>
+<script src="affichage/soleil.js?v=20261112b"></script>
+<script src="affichage/labo.js?v=20261112b"></script>
+<script src="affichage/paroi.js?v=20261112b"></script>
+<script src="affichage/confort.js?v=20261112b"></script>
 </body>
 </html>

@@ -43,15 +43,12 @@
   function ville() { const p = window.ConfortProjet.projet(); return V.villes.find(function (v) { return v.id === p.ville; }) || V.villes[0]; }
 
   function chargerMeteo(id, suite) {
-    const dispo = window.CONFORT_METEO && window.CONFORT_METEO[id];
-    if (dispo) { suite(dispo); return; }
     if (chargement === id) return;
     chargement = id;
-    const sc = document.createElement('script');
-    sc.src = 'donnees/meteo/' + id + '.js' + (VERSION ? '?v=' + VERSION : '');
-    sc.onload = function () { chargement = null; if (window.CONFORT_METEO && window.CONFORT_METEO[id]) suite(window.CONFORT_METEO[id]); };
-    sc.onerror = function () { chargement = null; $('#soleil-projet').innerHTML = '<div class="alerte attention">La météo de ' + esc(id) + ' n\'a pas pu être chargée (fichier donnees/meteo/' + esc(id) + '.js).</div>'; };
-    document.head.appendChild(sc);
+    V.charger(id, function (m) { chargement = null; suite(m); }, VERSION, function () {
+      chargement = null;
+      $('#soleil-projet').innerHTML = '<div class="alerte attention">La météo de ' + esc(id) + ' n\'a pas pu être chargée (fichier donnees/meteo/' + esc(id) + '.js).</div>';
+    });
   }
 
   /* ==========================================================

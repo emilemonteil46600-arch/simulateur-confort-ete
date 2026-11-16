@@ -12,7 +12,8 @@
      Chapitre 2  calcul-soleil.js       Météo, soleil sur les façades, apports de chaleur
      Chapitre 3  calcul-5r1c.js         Le modèle horaire 5R1C : les températures d'air,
                                         des surfaces, de la masse et opérative, heure par heure
-     Chapitre 4  calcul-indicateurs.js  (étape 4) heures, DH, adaptatif, PMV/PPD, score
+     Chapitre 4  calcul-indicateurs.js  Degrés-heures indicatifs, pics, origines de la chaleur
+                                        (à venir : adaptatif, PMV/PPD, Givoni, note)
      Chapitre 5  calcul-preconisations.js (étape 5) sensibilité et bouquets
 
    Ce fichier ne calcule rien : il rassemble les chapitres sous un seul nom,
@@ -41,7 +42,8 @@
     batiment: batiment,
     transitoire: transitoire,
     soleil: soleil,
-    cinqR1C: cinqR1C
+    cinqR1C: cinqR1C,
+    indicateurs: global.ConfortIndicateurs || (typeof require === 'function' ? require('./calcul-indicateurs.js') : null)
   };
 
   global.ConfortCalcul = ConfortCalcul;

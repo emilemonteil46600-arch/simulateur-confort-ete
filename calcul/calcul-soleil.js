@@ -268,6 +268,28 @@
   }
   function zeros() { return new Array(24).fill(0); }
 
+  // Charges internes en saisie libre : une puissance (W/m² de plancher) pendant une plage horaire (heures légales,
+  // la plage peut passer minuit), un niveau de veille le reste du temps (fraction de la puissance), semaine et / ou week-end.
+  // Rend un « usage » de la même forme que les scénarios des données (tout est mis dans le poste « occupants »).
+  function usageLibre(l) {
+    const p = Math.max(0, Number(l.puissance) || 0), veille = Math.max(0, Math.min(1, Number(l.veille) || 0));
+    const d = Number(l.debut), f = Number(l.fin);
+    const profil = [];
+    for (let h = 0; h < 24; h++) profil.push((d <= f ? (h >= d && h < f) : (h >= d || h < f)) ? 1 : veille);
+    const repos = new Array(24).fill(veille);
+    return { occupants: { max: p, semaine: profil, weekend: l.weekend ? profil : repos },
+      equipements: { max: 0, semaine: zeros(), weekend: zeros() }, eclairage: { max: 0, semaine: zeros(), weekend: zeros() } };
+  }
+  // Puissance moyenne d'un usage sur une semaine type (W/m²) : (5 jours de semaine + 2 de week-end) / 7.
+  function moyenneUsage(usage) {
+    let s = 0;
+    ['occupants', 'equipements', 'eclairage'].forEach(function (k) {
+      const x = usage[k], som = function (t) { return t.reduce(function (a, b) { return a + b; }, 0); };
+      s += x.max * (5 * som(x.semaine) + 2 * som(x.weekend)) / (7 * 24);
+    });
+    return s;
+  }
+
   /* ==========================================================
      7. LES PAROIS DE LA MAISON VUES PAR LE SOLEIL
      On réutilise le chapitre 1 bis (surfaces) : chaque façade est verticale (β = 90°),
@@ -398,7 +420,7 @@
     heureSolaire: heureSolaire, angleHoraire: angleHoraire, positionSoleil: positionSoleil,
     normaleParoi: normaleParoi, cosIncidence: cosIncidence, eclairementParoi: eclairementParoi,
     fractionEnsoleillee: fractionEnsoleillee, facteurProtection: facteurProtection, apportFenetre: apportFenetre,
-    apportOpaque: apportOpaque, temperatureSolAir: temperatureSolAir, serieSolAir: serieSolAir, apportInterne: apportInterne, pansDuToit: pansDuToit,
+    usageLibre: usageLibre, moyenneUsage: moyenneUsage, apportOpaque: apportOpaque, temperatureSolAir: temperatureSolAir, serieSolAir: serieSolAir, apportInterne: apportInterne, pansDuToit: pansDuToit,
     apportsHoraires: apportsHoraires, sommeKWh: sommeKWh, semaineLaPlusChaude: semaineLaPlusChaude, courseDuJour: courseDuJour
   };
 

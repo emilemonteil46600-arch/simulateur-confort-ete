@@ -491,7 +491,7 @@
     } else {
       $('#labo-champs-scenario').innerHTML = reglage.scenario === 'echelon'
         ? champ('tAvant', 'Dehors avant', '°C') + champ('tApres', 'Dehors après', '°C') + champ('duree', 'Durée', 'h')
-        : '<p class="aide" style="margin:0;flex-basis:100%">Journées de l\'atelier : ' + nb(onde.tMoyenne, 1) + ' ± ' + nb(onde.amplitude, 1) + ' °C, maximum à ' + nb(onde.heureMax, 1) + ' h (réglage « Une journée chaude », dans l\'atelier).</p>' + champ('duree', 'Durée', 'h');
+        : '<p class="aide" style="margin:0;flex-basis:100%">Journées de l\'atelier : ' + nb(onde.tMoyenne, 1) + ' ± ' + nb(onde.amplitude, 1) + ' °C, maximum à ' + nb(onde.heureMax, 1) + ' h (réglage « Une journée chaude », dans les détails des calculs).</p>' + champ('duree', 'Durée', 'h');
     }
     $('#labo-champs-piece').innerHTML = champ('tInterieure', reglage.piece === 'libre' ? 'Pièce au départ' : 'Pièce', '°C') +
       (reglage.piece === 'libre' ? champ('aireMur', 'Surface de ce mur', 'm²') + champ('volume', 'Volume', 'm³') +

@@ -59,6 +59,19 @@
     }).join(' ') + ' <span class="muet">ext.</span>';
   }
 
+  /* ---------- Le bandeau de synthèse : U, Δt, f, κ1 avec leur pastille d'été ---------- */
+  function dessinerKpis() {
+    const a = A.analyser(), boite = $('#paroi-kpis');
+    if (!a.ok) { boite.innerHTML = ''; return; }
+    const rep = P.reperesConfort(a, A.nature());
+    const par = {}; rep.liste.forEach(function (l) { par[l.id] = l; });
+    const k = function (id, symbole, val, unite) {
+      return '<div class="kpi kpi-' + (par[id].niveau || 'inconnu') + '"><span class="kpi-nom"><i></i>' + symbole + '</span><b>' + val + '</b><small>' + unite + '</small></div>';
+    };
+    boite.innerHTML = k('U', 'U · transmission', nb(a.U, 3), 'W/(m²·K)') + k('dephasage', 'Δt · déphasage', nb(a.dyn.dephasage, 1), 'h') +
+      k('amortissement', 'f · amortissement', nb(a.dyn.amortissement, 3), '–') + k('kappa1', 'κ1 · capacité intérieure', nb(a.dyn.kappa1 / 1000, 1), 'kJ/(m²·K)');
+  }
+
   /* ---------- Le verdict ---------- */
   function niveauTexte(n) { return { bon: 'bon', moyen: 'moyen', faible: 'faible' }[n] || '?'; }
   function dessinerVerdict() {
@@ -73,7 +86,7 @@
     } else note = '<p class="aide" style="margin:8px 0 0">Les deux derniers repères viennent du labo : choisis <b>☀ Vraie météo</b> pour les avoir.</p>';
     const rep = P.reperesConfort(a, nature, simu);
     const v = rep.verdict;
-    const titres = { bon: 'Bonne paroi d\'été', moyen: 'Paroi moyenne l\'été', faible: 'Paroi faible l\'été' };
+    const titres = { bon: 'Performance d\'été : bonne', moyen: 'Performance d\'été : moyenne', faible: 'Performance d\'été : faible' };
     const phrases = {
       bon: 'Elle retarde, écrase et absorbe la chaleur : elle aide la maison à rester fraîche.',
       moyen: 'Elle fait une partie du travail. Regarde les repères orange et rouges : c\'est là que ça se joue.',
@@ -123,17 +136,18 @@
   $('#paroi-modele').addEventListener('change', function (e) {
     if (!e.target.value) return;
     A.appliquerModele(e.target.value);
-    BAO.notifier('Paroi remplacée par le modèle. L\'ancienne n\'est gardée que si tu l\'avais enregistrée (atelier).');
+    BAO.notifier('Paroi remplacée par le modèle. L\'ancienne n\'est gardée que si tu l\'avais enregistrée (détails des calculs).');
   });
   document.querySelectorAll('#onglet-paroi .lien-expert').forEach(function (a) {
-    a.addEventListener('click', function (e) { e.preventDefault(); const b = document.querySelector('.onglets [data-onglet="' + a.dataset.vers + '"]'); if (b) b.click(); });
+    a.addEventListener('click', function (e) { e.preventDefault(); const d = $('#paroi-details'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   });
   // La paroi a changé : l'ancienne simulation ne vaut plus (le labo en renvoie une neuve juste après).
-  document.addEventListener('confort:paroi', function () { derniereSim = null; dessinerNature(); dessinerVerdict(); });
-  document.addEventListener('confort:donnees', function () { dessinerNature(); dessinerVerdict(); });
+  document.addEventListener('confort:paroi', function () { derniereSim = null; dessinerNature(); dessinerKpis(); dessinerVerdict(); });
+  document.addEventListener('confort:donnees', function () { dessinerNature(); dessinerKpis(); dessinerVerdict(); });
   document.addEventListener('confort:labo', function (e) { derniereSim = e.detail.sim; dernierReglage = e.detail.reglage; dessinerVerdict(); });
 
   dessinerDonnees();
   dessinerNature();
+  dessinerKpis();
   dessinerVerdict();
 })();

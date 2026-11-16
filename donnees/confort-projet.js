@@ -19,8 +19,11 @@ window.CONFORT_PROJET = {
     { id: 'bureaux', nom: 'Bureaux' },
     { id: 'enseignement', nom: 'Enseignement' },
     { id: 'petite-enfance', nom: 'Petite enfance' },
-    { id: 'salle', nom: 'Salle polyvalente / ERP' }
+    { id: 'salle', nom: 'Salle polyvalente / ERP' },
+    { id: 'libre', nom: 'Saisie libre (W/m² + horaires)' }
   ],
+  // Charges internes en saisie libre : valeurs de départ (H).
+  usageLibre: { puissance: 8, debut: 8, fin: 18, veille: 0.1, weekend: false },
 
   // Fenêtres complètes (vitrage + menuiserie). Uw : coefficient de la fenêtre ; g : facteur solaire du vitrage.
   // g ne sert qu'à partir de l'étape 2 (apports solaires).
@@ -158,7 +161,8 @@ window.CONFORT_PROJET = {
     couleurs: { murs: 'claire', toiture: 'moyenne' },
     parois: { murs: 'parpaing-iti', toiture: 'combles-laine', plancherBas: 'dallage-isole', plancherInter: 'plancher-inter', cloisons: 'cloison-ba13' },
     cloisons: { ratio: 1.0 },
-    ventilation: { vmc: 0.5, n50: 4, nuit: { active: true, debit: 3, debut: 22, fin: 7, ecart: 2, seuil: 24 } }
+    ventilation: { vmc: 0.5, n50: 4, nuit: { active: true, debit: 3, debut: 22, fin: 7, ecart: 2, seuil: 24 } },
+    usageLibre: { puissance: 8, debut: 8, fin: 18, veille: 0.1, weekend: false }
   }
 };
 })();

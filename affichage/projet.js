@@ -46,7 +46,8 @@
       couleurs: Object.assign({}, base.couleurs, p.couleurs || {}),
       parois: Object.assign(base.parois, p.parois || {}),
       cloisons: Object.assign(base.cloisons, p.cloisons || {}),
-      ventilation: Object.assign(base.ventilation, p.ventilation || {}, { nuit: Object.assign(base.ventilation.nuit, (p.ventilation || {}).nuit || {}) })
+      ventilation: Object.assign(base.ventilation, p.ventilation || {}, { nuit: Object.assign(base.ventilation.nuit, (p.ventilation || {}).nuit || {}) }),
+      usageLibre: Object.assign(base.usageLibre, p.usageLibre || {})
     };
   }
 
@@ -114,7 +115,7 @@
     const persos = Object.keys(mesParois()).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
     const opt = function (v, t) { return '<option value="' + esc(v) + '"' + (v === choisi ? ' selected' : '') + '>' + esc(t) + '</option>'; };
     const modeles = M.parois.filter(function (p) { return p.type === type; });
-    return (persos.length ? '<optgroup label="Mes parois (atelier)">' + persos.map(function (n) { return opt('perso:' + n, n); }).join('') + '</optgroup>' : '') +
+    return (persos.length ? '<optgroup label="Mes parois enregistrées">' + persos.map(function (n) { return opt('perso:' + n, n); }).join('') + '</optgroup>' : '') +
       '<optgroup label="Modèles">' + modeles.map(function (p) { return opt(p.id, p.nom); }).join('') + '</optgroup>' +
       (paroi(choisi) ? '' : opt(choisi, '(paroi introuvable)'));
   }
@@ -144,6 +145,7 @@
       return '<option value="' + esc(v.id) + '"' + (v.id === projet.vitrage ? ' selected' : '') + '>' + esc(v.nom) + ' — Uw ' + nb(Number(v.Uw), 1) + '</option>';
     }).join('');
     renderVentilation();
+    renderCharges();
     renderBoussole();
     renderFacades();
     renderSorties();
@@ -159,6 +161,17 @@
     $('#bloc-nuit').hidden = !v.nuit.active;
   }
 
+  // Charges internes : la moyenne du scénario choisi, et les réglages de la saisie libre.
+  function renderCharges() {
+    const S = window.ConfortSoleil, l = projet.usageLibre;
+    const usage = projet.usage === 'libre' ? S.usageLibre(l) : (X.scenarios.usages[projet.usage] || X.scenarios.usages.logement);
+    const pointe = usage.occupants.max + usage.equipements.max + usage.eclairage.max;
+    $('#charges-info').innerHTML = 'Charges internes : <b>' + nb(S.moyenneUsage(usage), 1) + ' W/m²</b> en moyenne, ' + nb(pointe, 1) + ' W/m² en pointe' +
+      (projet.usage === 'libre' ? '' : ' (occupants, équipements, éclairage ; scénario horaire dans Matériaux &amp; climat) (H)');
+    $('#bloc-charges-libres').hidden = projet.usage !== 'libre';
+    document.querySelectorAll('input[data-libre]').forEach(function (i) { if (i.type === 'checkbox') i.checked = !!l[i.dataset.libre]; else i.value = l[i.dataset.libre]; });
+  }
+
   function renderSorties() {
     const g = projet.geometrie;
     const o = B.orientation(g.orientation);
@@ -167,6 +180,8 @@
       longueur: nb(g.longueur, 1) + ' m', largeur: nb(g.largeur, 1) + ' m', hauteurEtage: nb(g.hauteurEtage, 2) + ' m',
       pente: nb(g.pente) + '°', orientation: nb(g.orientation) + '° · ' + o.nom, cloisons: nb(projet.cloisons.ratio, 1),
       vmc: nb(v.vmc, 2) + ' vol/h', n50: nb(v.n50, 1) + ' vol/h → ' + nb(v.n50 / 20, 2) + ' vol/h',
+      librePuissance: nb(projet.usageLibre.puissance, 1) + ' W/m²', libreDebut: nb(projet.usageLibre.debut) + ' h', libreFin: nb(projet.usageLibre.fin) + ' h',
+      libreVeille: nb(projet.usageLibre.veille * 100) + ' %',
       nuitDebut: nb(v.nuit.debut) + ' h', nuitFin: nb(v.nuit.fin) + ' h', nuitSeuil: nb(v.nuit.seuil) + ' °C', nuitEcart: nb(v.nuit.ecart) + ' °C'
     };
     document.querySelectorAll('output[data-sortie]').forEach(function (s) { s.textContent = val[s.dataset.sortie]; });
@@ -248,11 +263,7 @@
       if (!an[k].ok) erreurs.push(an[k].erreurs.join(' '));
     });
     const v = vitrageChoisi();
-    let html = '<div class="carte note-carte"><div class="carte-titre"><h2>Note de confort d\'été</h2><span class="badge bientot">étape 4</span></div>' +
-      jaugeVide() +
-      '<p class="aide" style="margin:2px 0 8px;text-align:center">Elle combinera les indicateurs ci-dessous, chacun noté sur 10 avec <b>tes barèmes</b> et pondéré par <b>tes coefficients</b>.</p>' +
-      '<div class="puces-futures">' + INDICATEURS_FUTURS.map(function (i) { return '<span>' + i + '</span>'; }).join('') + '</div></div>' +
-      '<div id="carte-temperatures"></div><div id="carte-apports"></div>';
+    let html = '<div id="carte-kpi"></div><div id="carte-temperatures"></div><div id="carte-apports"></div>';
 
     if (erreurs.length) {
       $('#chiffres-maison').innerHTML = '';
@@ -398,7 +409,10 @@
 
   function brancher() {
     $('#projet-nom').addEventListener('input', function (e) { projet.nom = e.target.value; sauver(); });
-    $('#projet-usage').addEventListener('change', function (e) { projet.usage = e.target.value; apresModif(false); });
+    $('#projet-usage').addEventListener('change', function (e) { projet.usage = e.target.value; renderCharges(); apresModif(false); });
+    document.querySelectorAll('input[data-libre]').forEach(function (i) {
+      i.addEventListener(i.type === 'checkbox' ? 'change' : 'input', function () { projet.usageLibre[i.dataset.libre] = i.type === 'checkbox' ? i.checked : Number(i.value); renderCharges(); apresModif(false); });
+    });
     $('#projet-ville').addEventListener('change', function (e) { projet.ville = e.target.value; apresModif(false); });
     document.querySelectorAll('input[data-geo]').forEach(function (i) {
       i.addEventListener('input', function () {

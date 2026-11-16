@@ -6,8 +6,8 @@
   <title>Simulateur de confort d'été</title>
   <meta name="description" content="Simulateur de confort d'été transparent : maison en 3D, parois couche par couche (NF EN ISO 13786), déperditions, inertie, et bientôt une note de confort multicritère (Givoni, degrés-heures, confort adaptatif).">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c4501b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M16 5v3M16 24v3M5 16h3M24 16h3' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="commun/style.css?v=20261112b">
-  <link rel="stylesheet" href="affichage/site.css?v=20261112b">
+  <link rel="stylesheet" href="commun/style.css?v=20261116">
+  <link rel="stylesheet" href="affichage/site.css?v=20261116">
 </head>
 <body class="appli">
 
@@ -18,14 +18,13 @@
       <span class="logo-texte"><b>Confort d'été</b><small>simulateur transparent</small></span>
     </a>
     <nav class="onglets" role="tablist" aria-label="Sections de l'outil">
-      <button data-onglet="calcul">Projet</button>
-      <button data-onglet="paroi">Ma paroi</button>
-      <button data-onglet="atelier">Atelier parois <span class="puce-expert">expert</span></button>
-      <button data-onglet="methode">Méthode</button>
-      <button data-onglet="donnees">Données</button>
+      <button data-onglet="calcul">Bâtiment</button>
+      <button data-onglet="paroi">Paroi</button>
+      <button data-onglet="donnees">Matériaux &amp; climat</button>
+      <button data-onglet="methode">Notice</button>
     </nav>
     <a class="lien-bao" href="https://emilemonteil46600-arch.github.io/boite-a-outils-thermique/" title="Les autres outils">Boîte à outils ↗</a>
-    <span class="version">Étape 3 · nov. 2026</span>
+    <span class="version">Modèle dynamique horaire · NF EN ISO 13786 / 13790</span>
   </div>
 </header>
 
@@ -39,7 +38,14 @@
           <summary><span class="pas-n">1</span><span class="pas-titre">Le projet</span><span class="pas-resume" data-resume="projet"></span></summary>
           <div class="pas-corps">
             <div class="champ"><label for="projet-nom">Nom</label><input type="text" id="projet-nom" autocomplete="off"></div>
-            <div class="champ"><label for="projet-usage">Usage</label><select id="projet-usage"></select></div>
+            <div class="champ"><label for="projet-usage">Usage et charges internes</label><select id="projet-usage"></select><span class="aide" id="charges-info"></span></div>
+            <div id="bloc-charges-libres" class="pas-sous" hidden>
+              <div class="curseur"><label for="l-puissance">Puissance en occupation</label><input type="range" id="l-puissance" min="0" max="60" step="0.5" data-libre="puissance"><output data-sortie="librePuissance"></output></div>
+              <div class="curseur"><label for="l-debut">Occupation de</label><input type="range" id="l-debut" min="0" max="23" step="1" data-libre="debut"><output data-sortie="libreDebut"></output></div>
+              <div class="curseur"><label for="l-fin">à</label><input type="range" id="l-fin" min="1" max="24" step="1" data-libre="fin"><output data-sortie="libreFin"></output></div>
+              <div class="curseur"><label for="l-veille">Hors occupation (veille)</label><input type="range" id="l-veille" min="0" max="1" step="0.05" data-libre="veille"><output data-sortie="libreVeille"></output></div>
+              <label class="interrupteur"><input type="checkbox" id="l-weekend" data-libre="weekend"><span>Occupé aussi le week-end</span></label>
+            </div>
             <div class="champ"><label for="projet-ville">Ville (météo)</label><select id="projet-ville"></select><span class="aide" id="ville-info"></span></div>
           </div>
         </details>
@@ -68,7 +74,7 @@
         <details class="pas" data-pas="orientation">
           <summary><span class="pas-n">4</span><span class="pas-titre">L'orientation</span><span class="pas-resume" data-resume="orientation"></span></summary>
           <div class="pas-corps">
-            <p class="aide" style="margin:0 0 6px">Vers où regarde la <b>façade A</b> ? Les autres suivent à 90°.</p>
+            <p class="aide" style="margin:0 0 6px">Azimut de la <b>façade principale (A)</b>. Les autres suivent à 90°.</p>
             <div class="boussole" id="boussole"></div>
             <div class="curseur"><label for="g-orientation">Réglage fin (azimut, depuis le Nord)</label><input type="range" id="g-orientation" min="0" max="355" step="5" data-geo="orientation"><output data-sortie="orientation"></output></div>
           </div>
@@ -92,7 +98,7 @@
             <div class="champ" id="bloc-plancherInter"><label for="p-plancherInter">Planchers entre niveaux</label><select id="p-plancherInter" data-paroi="plancherInter"></select></div>
             <div class="champ"><label for="p-cloisons">Cloisons</label><select id="p-cloisons" data-paroi="cloisons"></select></div>
             <div class="curseur"><label for="g-cloisons">Cloisons (m² par m² de plancher) (H)</label><input type="range" id="g-cloisons" min="0" max="2" step="0.1"><output data-sortie="cloisons"></output></div>
-            <p class="aide" style="margin:6px 0 0">Pour détailler une composition couche par couche : onglet <b>Atelier parois</b>. Tes parois enregistrées apparaissent ici.</p>
+            <p class="aide" style="margin:6px 0 0">Pour détailler une composition couche par couche : onglet <b>Paroi</b>. Tes parois enregistrées apparaissent ici.</p>
           </div>
         </details>
 
@@ -101,7 +107,7 @@
           <div class="pas-corps">
             <div class="curseur"><label for="v-vmc">Ventilation (VMC, hygiénique)</label><input type="range" id="v-vmc" min="0" max="2" step="0.05" data-vent="vmc"><output data-sortie="vmc"></output></div>
             <div class="curseur"><label for="v-n50">Perméabilité à l'air n50 → infiltrations n50/20 (H)</label><input type="range" id="v-n50" min="0" max="12" step="0.5" data-vent="n50"><output data-sortie="n50"></output></div>
-            <label class="interrupteur"><input type="checkbox" id="vent-nuit-active"><span>J'ouvre les fenêtres la nuit quand il fait plus frais dehors</span></label>
+            <label class="interrupteur"><input type="checkbox" id="vent-nuit-active"><span>Surventilation nocturne (ouverture des fenêtres quand l'air extérieur est plus frais)</span></label>
             <div id="bloc-nuit" class="pas-sous">
               <div class="champ"><span class="etiquette">Fenêtres</span><div class="segments" id="vent-nuit-debit" role="group" aria-label="Débit de surventilation nocturne"></div></div>
               <div class="curseur"><label for="v-nuit-debut">De</label><input type="range" id="v-nuit-debut" min="18" max="23" step="1" data-nuit="debut"><output data-sortie="nuitDebut"></output></div>
@@ -109,7 +115,7 @@
               <div class="curseur"><label for="v-nuit-seuil">Seulement si dedans dépasse</label><input type="range" id="v-nuit-seuil" min="20" max="28" step="0.5" data-nuit="seuil"><output data-sortie="nuitSeuil"></output></div>
               <div class="curseur"><label for="v-nuit-ecart">et si dehors est plus frais d'au moins</label><input type="range" id="v-nuit-ecart" min="0" max="5" step="0.5" data-nuit="ecart"><output data-sortie="nuitEcart"></output></div>
             </div>
-            <p class="aide" style="margin:6px 0 0">Débits en volumes de maison par heure. Fenêtres « ouvertes » ≈ 3 vol/h, « traversantes » ≈ 8 vol/h : ordres de grandeur (H). L'air neuf est pris à la température extérieure (pas de puits canadien ni de double flux pour l'instant).</p>
+            <p class="aide" style="margin:6px 0 0">Débits en volumes de maison par heure. Fenêtres « ouvertes » ≈ 3 vol/h, « traversantes » ≈ 8 vol/h : ordres de grandeur (H). Air neuf à la température extérieure.</p>
           </div>
         </details>
 
@@ -137,18 +143,19 @@
   <!-- ===================== ONGLET MA PAROI (mode simple) ===================== -->
   <section class="panneau" id="onglet-paroi" role="tabpanel" hidden>
     <div class="carte paroi-choix">
-      <div class="carte-titre"><h2>Ma paroi, l'été</h2><span class="aide">Une paroi, tes matériaux, la vraie météo : est-elle bonne pour le confort d'été ?</span></div>
+      <div class="carte-titre"><h2>Caractérisation de paroi</h2><span class="aide">NF EN ISO 13786 · régime périodique 24 h et simulation instationnaire sous météo réelle</span></div>
       <div class="nature-cartes" id="paroi-nature" role="group" aria-label="Nature de la paroi"></div>
       <div class="paroi-ligne">
         <select id="paroi-modele" aria-label="Partir d'un modèle"></select>
         <div class="paroi-composition" id="paroi-composition"></div>
-        <a class="lien-expert" href="#" data-vers="atelier">Mode expert : l'atelier (couches, matrices, inertie du local) →</a>
+        <a class="lien-expert" href="#paroi-details" data-vers="details">Détails des calculs ↓</a>
       </div>
+      <div class="kpis-paroi" id="paroi-kpis"></div>
     </div>
     <div class="carte labo" id="labo">
       <div class="labo-tete">
-        <h2>Le labo</h2>
-        <p class="aide">Glisse un matériau dans le mur, déplace les couches (la poubelle, ou tirer une couche hors du mur, la retire), puis lance le temps : regarde la chaleur traverser.</p>
+        <h2>Coupe animée</h2>
+        <p class="aide">Transfert thermique instationnaire 1D (différences finies). Glisse un matériau dans la paroi, déplace ou retire les couches, puis lance la simulation.</p>
       </div>
       <div class="labo-palette" id="labo-palette" aria-label="Matériaux à glisser dans le mur"></div>
       <div class="labo-scene-boite">
@@ -174,15 +181,12 @@
       <details class="labo-courbes"><summary>Les courbes dans le temps</summary><div id="labo-graphe"></div></details>
     </div>
     <div class="carte" id="paroi-verdict-carte">
-      <div class="carte-titre"><h2>Confort d'été de cette paroi</h2><span class="aide">repères courants (H) · Méthode § 36</span></div>
+      <div class="carte-titre"><h2>Performance d'été de la paroi</h2><span class="aide">repères courants (H) · Notice § 36</span></div>
       <div id="paroi-verdict"></div>
     </div>
-  </section>
-
-  <!-- ===================== ONGLET ATELIER PAROIS (mode expert) ===================== -->
-  <section class="panneau" id="onglet-atelier" role="tabpanel" hidden>
-    <div class="bandeau-expert"><b>Atelier parois · mode expert.</b> Décris une paroi couche par couche : U, déphasage, amortissement, admittance, capacité κ (NF EN ISO 13786), puis l'inertie d'un local (NF EN ISO 13790). Le labo animé est dans l'onglet <b>Ma paroi</b> (même paroi). Les parois que tu enregistres ici apparaissent dans les listes du projet.</div>
-
+    <details class="paroi-details" id="paroi-details">
+      <summary>Détails des calculs matriciels et couches intermédiaires <small>tableau des couches, matrices ISO 13786, journée type, parois enregistrées, inertie d'un local</small></summary>
+      <div class="paroi-details-corps">
     <div class="grille-2">
       <div>
         <div class="carte">
@@ -297,7 +301,11 @@
         </div>
       </aside>
     </div>
+      </div>
+    </details>
   </section>
+
+
 
   <!-- ===================== ONGLET MÉTHODE ===================== -->
   <section class="panneau" id="onglet-methode" role="tabpanel" hidden>
@@ -819,11 +827,20 @@ Tuile sombre (α 0,8) à 900 W/m², toit à 35° : 30 + 28,8 − 1,8 = 57,0 °C 
       </tbody></table></div>
       <p>Le verdict compte 2 points par repère bon, 1 par moyen : « bonne paroi » à partir de 75 %, « faible » sous 40 % (H). Le labo donne aussi le <b>déphasage observé</b> (pic à pic) et l'<b>amortissement observé</b> : sur une sinusoïde ils rejoignent les matrices du chapitre 1 ; sur une vraie météo, ils s'en écartent un peu (plusieurs jours chauds de suite, nuages).</p>
 
-      <h2>37. Teste-toi</h2>
+      <h2>37. Indicateurs de synthèse : degrés-heures, pics, origine des apports (H)</h2>
+      <p>En tête des résultats du bâtiment, trois lectures des températures opératives horaires de juin à septembre.</p>
+      <div class="formule">DH = Σ max(0 ; θop − seuil)     seuil = 28 °C le jour, 26 °C la nuit (22 h → 7 h) (H)        [°C] × [h] = °C·h
+1 DH = une heure passée 1 °C au-dessus du seuil. 4 h à 30 °C l'après-midi = 4 × 2 = 8 DH.
+Maison d'exemple (Toulouse) : 904 DH avec surventilation nocturne, 2 442 DH sans.</div>
+      <p><b>Ce que ces DH sont, et ne sont pas.</b> L'idée est celle de l'indicateur de confort d'été de la RE2020 : durée × intensité de l'inconfort. Mais la méthode réglementaire (Th-BCE) utilise une météo caniculaire conventionnelle par zone, les seules heures d'occupation, et un seuil <b>adaptatif</b> (de 26 à 28 °C le jour selon les températures des jours précédents, 26 °C la nuit). Ici : année type PVGIS (un été normal), toutes les heures, seuils fixes. Les repères 350 et 1 250 °C·h sont ceux qu'on cite pour la RE2020 (H : à vérifier dans l'arrêté du 4 août 2021) ; ils servent à <b>situer et comparer des variantes</b>, jamais à déclarer une conformité. Les valeurs affichées sont donc des <b>DH indicatifs</b>.</p>
+      <p><b>Pics.</b> θ<sub>op</sub> maximale de la saison, et maximale la nuit (22 h → 7 h, heure légale) : le pic de nuit dit si on peut dormir. <b>Origine des apports</b> : soleil transmis par les vitrages, apports internes, soleil absorbé par les parois opaques (part positive du flux sol-air, § 24), et chaleur apportée par l'air extérieur quand il est plus chaud que l'intérieur (ventilation, infiltrations, transmission).</p>
+      <p><b>État initial.</b> « Figer comme état initial » garde en mémoire (le temps de la visite) la courbe opérative et les indicateurs du projet tel qu'il est. Toute modification affiche ensuite l'écart (− x °C, − y DH) et la courbe initiale en pointillés gris : c'est la lecture « avant / après » d'un audit. <b>Charges internes en saisie libre</b> : une puissance (W/m²) pendant une plage horaire, un niveau de veille le reste du temps, semaine et week-end.</p>
+
+      <h2>38. Teste-toi</h2>
       <p>Des exercices tirés au hasard, corrigés étape par étape. Refais-les jusqu'à trouver juste sans regarder la formule.</p>
       <div id="teste-toi"></div>
 
-      <h2>38. Où est le code</h2>
+      <h2>39. Où est le code</h2>
       <ul>
         <li><code>calcul/calcul-parois.js</code> : chapitre 1, les formules ci-dessus commentées (nombres complexes, matrices, κ, inertie).</li>
         <li><code>calcul/calcul-batiment.js</code> : chapitre 1 bis, la maison (surfaces, H, inertie).</li>
@@ -840,6 +857,7 @@ Tuile sombre (α 0,8) à 900 W/m², toit à 35° : 30 + 28,8 − 1,8 = 57,0 °C 
         <li><code>affichage/soleil.js</code> : le soleil sur la maquette, la barre jour · heure, les cartes du soleil (aucun calcul).</li>
         <li><code>calcul/calcul-5r1c.js</code> : chapitre 3, le circuit 5R1C, le pas de Crank-Nicolson, le sol, la ventilation, les entrées depuis la maison.</li>
         <li><code>affichage/confort.js</code> : la température dedans (tuiles, semaine la plus chaude, labo des réservoirs, « et si », l'heure pas à pas ; aucun calcul).</li>
+        <li><code>calcul/calcul-indicateurs.js</code> : degrés-heures indicatifs, pics, origine des apports.</li>
         <li><code>tests/confort-5r1c.test.js</code> : la validation du modèle horaire (bilan, analytique, échelon, exemples, BESTEST 600FF / 900FF indicatif).</li>
         <li><code>donnees/confort-meteo.js</code> et <code>donnees/meteo/*.js</code> : les 10 villes (PVGIS) ; <code>donnees/meteo/preparer-meteo.js</code> les fabrique.</li>
         <li><code>tests/confort-parois.test.js</code> : la validation (différences finies, exemple à la main, limites).</li>
@@ -922,26 +940,27 @@ Tuile sombre (α 0,8) à 900 W/m², toit à 35° : 30 + 28,8 − 1,8 = 57,0 °C 
   Outil personnel d'aide à l'audit énergétique. Ordres de grandeur pour comprendre et comparer des variantes ; la STD reste la référence.
 </footer>
 
-<script src="commun/commun.js?v=20261112b"></script>
-<script src="donnees/confort-materiaux.js?v=20261112b"></script>
-<script src="donnees/confort-projet.js?v=20261112b"></script>
-<script src="donnees/confort-meteo.js?v=20261112b"></script>
-<script src="calcul/calcul-parois.js?v=20261112b"></script>
-<script src="calcul/calcul-batiment.js?v=20261112b"></script>
-<script src="calcul/calcul-transitoire.js?v=20261112b"></script>
-<script src="calcul/calcul-soleil.js?v=20261112b"></script>
-<script src="calcul/calcul-5r1c.js?v=20261112b"></script>
-<script src="calcul/calcul.js?v=20261112b"></script>
-<script src="affichage/schemas.js?v=20261112b"></script>
-<script src="affichage/graphiques.js?v=20261112b"></script>
-<script src="affichage/exercices.js?v=20261112b"></script>
-<script src="donnees/lexique.js?v=20261112b"></script>
-<script src="affichage/maison3d.js?v=20261112b"></script>
-<script src="affichage/interface.js?v=20261112b"></script>
-<script src="affichage/projet.js?v=20261112b"></script>
-<script src="affichage/soleil.js?v=20261112b"></script>
-<script src="affichage/labo.js?v=20261112b"></script>
-<script src="affichage/paroi.js?v=20261112b"></script>
-<script src="affichage/confort.js?v=20261112b"></script>
+<script src="commun/commun.js?v=20261116"></script>
+<script src="donnees/confort-materiaux.js?v=20261116"></script>
+<script src="donnees/confort-projet.js?v=20261116"></script>
+<script src="donnees/confort-meteo.js?v=20261116"></script>
+<script src="calcul/calcul-parois.js?v=20261116"></script>
+<script src="calcul/calcul-batiment.js?v=20261116"></script>
+<script src="calcul/calcul-transitoire.js?v=20261116"></script>
+<script src="calcul/calcul-soleil.js?v=20261116"></script>
+<script src="calcul/calcul-5r1c.js?v=20261116"></script>
+<script src="calcul/calcul-indicateurs.js?v=20261116"></script>
+<script src="calcul/calcul.js?v=20261116"></script>
+<script src="affichage/schemas.js?v=20261116"></script>
+<script src="affichage/graphiques.js?v=20261116"></script>
+<script src="affichage/exercices.js?v=20261116"></script>
+<script src="donnees/lexique.js?v=20261116"></script>
+<script src="affichage/maison3d.js?v=20261116"></script>
+<script src="affichage/interface.js?v=20261116"></script>
+<script src="affichage/projet.js?v=20261116"></script>
+<script src="affichage/soleil.js?v=20261116"></script>
+<script src="affichage/labo.js?v=20261116"></script>
+<script src="affichage/paroi.js?v=20261116"></script>
+<script src="affichage/confort.js?v=20261116"></script>
 </body>
 </html>

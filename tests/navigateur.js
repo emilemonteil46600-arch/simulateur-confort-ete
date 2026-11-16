@@ -103,12 +103,27 @@ async function nouvellePage(navigateur, options) {
   ok((await tuilesConfort()).includes('34,6'), 'Fenêtres fermées la nuit : pic 34,6 °C');
   await page.click('#vent-nuit-active');
   await page.waitForTimeout(400);
+  ok((await page.textContent('#carte-kpi')).replace(/\s/g, ' ').includes('904') && (await page.textContent('#carte-kpi')).includes('Tolérable'), 'Indicateurs : 904 DH indicatifs, « Tolérable »');
+  await page.click('#btn-ref-figer');
+  await page.click('#vent-nuit-active');
+  await page.waitForTimeout(400);
+  ok((await page.textContent('#carte-kpi')).replace(/\s/g, ' ').includes('+1 538 DH') && await page.$('#graphe-temperatures-semaine .gr-init') !== null, 'État initial figé : + 1 538 DH sans surventilation, courbe initiale en pointillés');
+  await page.click('#vent-nuit-active');
+  await page.click('#btn-ref-effacer');
+  await page.selectOption('#projet-usage', 'libre');
+  await page.waitForTimeout(400);
+  ok((await page.textContent('#charges-info')).includes('2,9 W/m²') && await page.$eval('#bloc-charges-libres', function (b) { return !b.hidden; }), 'Charges internes en saisie libre : 8 W/m² de 8 h à 18 h → 2,9 W/m² en moyenne');
+  await page.selectOption('#projet-usage', 'logement');
+  await page.waitForTimeout(400);
   await page.click('#confort-projet details.soleil-pas summary');
   await page.waitForTimeout(200);
   ok((await page.textContent('#confort-detail')).includes('Crank-Nicolson') && (await page.textContent('#confort-detail')).includes('le bilan boucle'), 'Détail pas à pas de l\'heure (5R1C) affiché');
 
-  console.log('3. Atelier parois (étape 1)');
-  await page.click('[data-onglet="atelier"]');
+  console.log('3. Paroi : détails des calculs (étape 1)');
+  await page.click('[data-onglet="paroi"]');
+  ok(await page.$$eval('#paroi-kpis .kpi', function (k) { return k.length; }) === 4, 'Paroi : bandeau des 4 indicateurs (U, Δt, f, κ1)');
+  ok(await page.$eval('#paroi-details', function (d) { return !d.open; }), 'Détails des calculs repliés par défaut');
+  await page.$eval('#paroi-details', function (d) { d.open = true; });
   const resultat = function () { return page.textContent('#resultats').then(function (t) { return t.replace(/\s/g, ' '); }); };
   ok((await resultat()).includes('0,252') && (await resultat()).includes('7,7'), 'Béton 18 + ITE PSE 14 : U = 0,252, Δt ≈ 7,7 h');
   ok(await page.$('#schema svg .sch-onde') !== null, 'Coupe de la paroi avec la courbe de l\'onde');
@@ -135,6 +150,7 @@ async function nouvellePage(navigateur, options) {
   ok(await page.$$eval('#paroi-nature .nature-carte', function (b) { return b.length; }) === 3 && await page.$('#paroi-nature [data-nature="mur"][aria-pressed="true"]') !== null, 'Ma paroi : 3 natures, « Mur extérieur » choisi pour le béton + ITE');
   ok((await page.textContent('#labo-mesures')).includes('sol-air') && (await page.textContent('#labo-jour')).includes('juin'), 'Labo « vraie météo » : sol-air à Toulouse, semaine la plus chaude (juin)');
   const verdict = function () { return page.textContent('#paroi-verdict').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  await page.waitForFunction(function () { return document.querySelector('#paroi-verdict').textContent.includes('sur 6'); });
   ok((await verdict()).includes('repères sur 6') && (await verdict()).includes('Flux de pointe'), 'Verdict : 6 repères dont ceux du labo');
   await page.click('#paroi-nature [data-nature="toiture"]');
   await page.waitForTimeout(500);

@@ -62,7 +62,7 @@
     const v = ville();
     return {
       projet: projet, synthese: r.synthese, lieu: { lat: v.lat, lon: v.lon }, meteo: meteo, vitrage: r.vitrage,
-      protections: prot, seuil: P.seuil(), usage: X.scenarios.usages[projet.usage] || X.scenarios.usages.logement,
+      protections: prot, seuil: P.seuil(), usage: projet.usage === 'libre' ? S.usageLibre(projet.usageLibre) : (X.scenarios.usages[projet.usage] || X.scenarios.usages.logement),
       U: { murs: r.analyses.murs.U, toiture: r.analyses.toiture.U },
       alpha: { murs: alpha(projet.couleurs.murs), toiture: alpha(projet.couleurs.toiture) },
       casquettes: projet.casquettes, fenetre: X.fenetre, heures: [K0, K1]

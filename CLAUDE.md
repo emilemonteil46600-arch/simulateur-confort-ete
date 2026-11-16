@@ -45,9 +45,11 @@ préconisations, validation, découpage en 8 étapes).
 
 ## Règles de fond
 
-1. **Trois onglets : Calcul · Méthode · Données** (+ « Comparer » plus tard si besoin). Dans le simulateur, « Calcul » est
-   éclaté en **Projet** (la maison), **Ma paroi** (mode simple : une paroi dans la vraie météo, 12/11/2026) et
-   **Atelier parois** (expert).
+1. **Quatre onglets (refonte « outil de BE » du 16/11/2026)** : **Bâtiment** (`calcul`, le 5R1C), **Paroi** (`paroi` : synthèse U, Δt, f, κ1,
+   coupe animée, verdict ; l'ancien atelier est dans le `<details id="paroi-details">` replié), **Matériaux & climat** (`donnees`),
+   **Notice** (`methode`). Les identifiants `data-onglet` n'ont pas changé.
+   **Ton de l'interface : logiciel de bureau d'études.** Pas de mention « étape N », « bientôt », « pour l'instant » dans l'écran ;
+   les limites et hypothèses (H) restent, dans la Notice et à côté des valeurs.
 2. **Aucun chiffre sans source** : source, date, statut `exemple` / `valide`. Avertissement tant qu'une valeur est en `exemple`.
 3. **Hypothèses marquées (H)**, jamais cachées. **Fourchettes plutôt que fausse précision** ; on arrondit l'affichage, jamais le calcul.
 
@@ -72,7 +74,8 @@ préconisations, validation, découpage en 8 étapes).
     calcul-5r1c.js            ch. 3 : modèle horaire 5R1C (ISO 13790 annexe C (H)) : conductances, répartition des apports,
                               pas de Crank-Nicolson, sol sous la dalle (H), ventilation + surventilation nocturne (H),
                               entreesMaison (depuis la synthèse du ch. 1 bis et les apports du ch. 2) (fait)
-    calcul-indicateurs.js     ch. 4 : indicateurs + note (étape 4) …
+    calcul-indicateurs.js     ch. 4 (début, fait) : degrés-heures INDICATIFS (H : seuils fixes 28 / 26 °C, repères 350 / 1 250),
+                              pics opératifs (jour, nuit), origine des apports ; à venir : adaptatif, PMV/PPD, Givoni, note
   affichage/                  projet.js (onglet Projet : saisie simple + résultat, AUCUN calcul),
                               maison3d.js (maquette 3D SVG faite main : projection orthogonale, faces visibles n·c > 0),
                               interface.js (onglet Atelier parois, AUCUN calcul), schemas.js et graphiques.js (SVG),
@@ -107,7 +110,7 @@ préconisations, validation, découpage en 8 étapes).
   (emilemonteil46600-arch.github.io) : les deux sites **partagent le même stockage** (utile à l'étape 5 pour lire
   les ratios du chiffrage `bao.chiffrage.biblio.v1`), d'où le préfixe `bao.confort.*`.
 - Clés (ne **jamais** les renommer sans migration) : `bao.confort.projet.v1` (la maison, dont `ville`, `casquettes`, `couleurs`,
-  `ventilation` {vmc, n50, nuit}),
+  `ventilation` {vmc, n50, nuit}, `usageLibre` {puissance, debut, fin, veille, weekend}),
   `bao.confort.paroi.v1` (dont `nature` : mur | toiture | plancher, devinée si absente), `bao.confort.parois.v1`, `bao.confort.local.v1`, `bao.confort.materiaux.v1`,
   `bao.confort.reglages.v1` (onde + types de fenêtres + `protections` + `seuilProtection` ; l'atelier et le projet y écrivent
   chacun leur partie : toujours relire avant d'écrire) ; affichage seulement (hors sauvegarde) : `bao.confort.onglet`,
@@ -145,6 +148,8 @@ préconisations, validation, découpage en 8 étapes).
      Htr,em 62,74, Htr,w 18,2, Hve 50,4 W/K (0,7 vol/h), τ 20,3 h, juin → sept. **pic opératif 33,3 °C, moyenne 24,8 °C**
      (fenêtres ouvertes la nuit 3 vol/h) / 34,6 et 26,1 °C fenêtres fermées ; BESTEST 600FF (météo PVGIS Denver,
      `tests/references/pvgis-denver-tmy.json`, indicatif) dans les plages publiées (H), 900FF à ± 2,5 K ;
+   - indicateurs : 4 h à 30 °C le jour = 8 DH ; maison d'exemple Toulouse **904 DH** (« Tolérable ») avec surventilation nocturne,
+     2 442 sans (+ 1 538) ; charges libres 8 W/m², 8 h → 18 h, veille 10 % → 2,94 W/m² en moyenne ;
    - Teste-toi : 40 tirages par exercice.
 2. `node tests/navigateur.js` : aucune erreur console, 390 px clair / sombre, exemples à l'écran, sauvegarde / restauration.
 3. **Changer le numéro de version `?v=AAAAMMJJ`** de TOUS les scripts et feuilles de style dans `index.html` à chaque
@@ -182,7 +187,7 @@ préconisations, validation, découpage en 8 étapes).
   pour comprendre (le labo de l'atelier). Continuer dans cet esprit : chaque notion importante peut avoir son « labo ».
 - Ordre : 1 bis (maison 3D) → 1 ter (labo animé) → 2 (météo + soleil sur la maquette) → 3 (5R1C) → 4 (indicateurs + note) → 5…7.
 
-## État au 12/11/2026
+## État au 16/11/2026
 
 | Étape | État |
 |---|---|
@@ -194,6 +199,7 @@ préconisations, validation, découpage en 8 étapes).
 | 2. Météo + soleil | **Fait, en attente de l'accord d'Émile.** 10 villes PVGIS TMY (8 760 h), position du soleil, éclairement des parois, apports fenêtres / murs / toit / internes heure par heure ; maquette : vrai soleil, course, ombre portée, façades qui chauffent, volets qui se baissent, casquettes ; barre jour · heure animée ; cartes « Le soleil sur ta maison » et « Ce qui entre » ; détail pas à pas de l'heure ; Données : protections (Fc, seuil), météo, scénarios. Méthode § 20 à 27, 3 exercices + 3 questions, 13 mots de lexique. Fiche `docs/etape-2.md`. **Pas de canicule** : PVGIS donne les années réelles mais sans humidité (à décider). |
 | 3. Moteur 5R1C | **Fait, en attente de l'accord d'Émile** (options conseillées retenues le 12/11 : VMC + n50/20, surventilation nocturne dès maintenant, sol = moyenne annuelle amortie (H), BESTEST avec météo PVGIS de Denver (indicatif), labo « réservoirs », canicule et sources reportées). Chapitre `calcul/calcul-5r1c.js`, saisie « 7. L'air », tuiles, carte « La température dedans » (semaine la plus chaude, « et si la maison était… », labo des réservoirs, heure pas à pas), pastille et vitres colorées sur la maquette, 🏠 dans la barre, carte « Températures d'été », Données. Méthode § 28 à 35 (circuit SVG, cours, exemple à la main), 3 exercices + 3 QCM, 9 mots de lexique, 11 tests. Fiche `docs/etape-3.md`. |
 | Ma paroi (demande du 12/11) | **Fait, en attente de l'accord d'Émile.** Onglet simple entre Projet et Atelier : 3 natures (mur / toiture / plancher bas, même paroi que l'atelier), modèles de départ, le labo animé déplacé ici avec le scénario « ☀ vraie météo » (ville PVGIS, début, jours, orientation, pente, couleur α → température sol-air ; plancher → sol sous la dalle ; air neuf = air réel), carte « Confort d'été de cette paroi » (verdict, 6 repères (H), conseils). Méthode § 36, Données (repères), fiche `docs/ma-paroi.md`, 4 tests. |
-| Visuel (demande du 06/11) | **B, à faire ensuite**, dans une PR séparée : refaire plus beau, épuré et pro l'onglet Projet (saisie + maison) et le labo, en gardant tout ce qui marche. |
+| Refonte « outil de BE » (16/11, plan d'audit de Gemini validé par Émile) | **Fait, en attente de l'accord d'Émile.** 4 onglets (Bâtiment · Paroi · Matériaux & climat · Notice), atelier fusionné dans Paroi (bandeau U / Δt / f / κ1, détails repliés), wording professionnel, carte « Confort d'été » en tête (DH indicatifs (H), T op max, T op max de nuit, origine des apports), bouton « Figer comme état initial » (écarts en direct, courbe initiale en pointillés ; en mémoire le temps de la visite), charges internes en saisie libre (`projet.usageLibre`). Notice § 37. Ajustements par rapport au plan de Gemini : DH « indicatifs », jamais « conforme » ; limites (H) conservées ; les apports internes existaient déjà. |
+| Visuel (demande du 06/11) | En partie couvert par la refonte du 16/11. Reste possible : embellir la saisie et la maquette. À confirmer avec Émile. |
 | Décisions ouvertes | Canicule (PVGIS années réelles sans humidité : humidité estimée (H), autre source, ou attendre l'étape 4) ; sources pour remplacer les valeurs d'exemple (Fc, seuil 200 W/m², apports internes, matériaux, ventilation) ; valeurs de l'annexe C et plages BESTEST à vérifier dans les textes. Émile n'a pas encore répondu aux 3 questions des étapes 1 à 3. |
 | 4 à 7 | À faire, dans l'ordre du cahier des charges. |

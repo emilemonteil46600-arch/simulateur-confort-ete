@@ -28,6 +28,9 @@
     { id: 0.5, nom: '2 × plus légère' }, { id: 1, nom: 'Telle quelle' }, { id: 2, nom: '2 × plus lourde' }, { id: 4, nom: '4 × plus lourde' }
   ];
   let sim = null, essai = null, facteurCm = 1, rendu = null, semaine = null;
+  // L'état initial figé (référence) : gardé en mémoire le temps de la visite, pour comparer une variante.
+  let reference = null;
+  const I4 = window.ConfortIndicateurs;
 
   /* ==========================================================
      LE CALCUL (appel au chapitre 3, rien de plus)
@@ -47,6 +50,8 @@
     sim = R.simuler(e);
     sim.entrees = e;
     sim.resume = resumes(sim);
+    sim.kpi = I4.indicateurs(sim.Top, A.K0, A.K_ETE - A.K0);
+    sim.origines = I4.originesChaleur(A.calc().serie, sim, A.K_ETE - A.K0);
     essai = null;
     if (facteurCm !== 1) { essai = R.simuler(entrees(facteurCm)); essai.resume = resumes(essai); }
     semaine = A.calc().semaine;
@@ -54,7 +59,7 @@
     A.redessinerHeure();   // la maquette et la barre prennent la température dedans
   }
 
-  // Résumés de juin → septembre (des chiffres bruts : les indicateurs et la note sont l'étape 4).
+  // Résumés de juin → septembre.
   function resumes(r) {
     const A = window.ConfortApports, de = A.K_ETE - A.K0;
     const top = R.resumer(r.Top, de), air = R.resumer(r.Tair, de), ext = R.resumer(r.Text, de);
@@ -95,7 +100,8 @@
      ========================================================== */
   function toutDessiner() {
     const tuiles = $('#chiffres-confort'), carte = $('#confort-projet'), droite = $('#carte-temperatures');
-    if (!sim) { tuiles.innerHTML = ''; carte.innerHTML = ''; if (droite) droite.innerHTML = ''; return; }
+    if (!sim) { tuiles.innerHTML = ''; carte.innerHTML = ''; if (droite) droite.innerHTML = ''; if ($('#carte-kpi')) $('#carte-kpi').innerHTML = ''; return; }
+    dessinerKpi();
     dessinerTuiles();
     dessinerCarte();
     dessinerDroite();
@@ -121,21 +127,51 @@
       tuile('Nuits fenêtres ouvertes', v.nuit && v.nuit.active ? nb(z.nuits) : '–', '', v.nuit && v.nuit.active ? 'sur ' + Math.round(z.heures / 24) + ' · ' + nb(v.nuit.debit) + ' vol/h, ' + nb(v.nuit.debut) + ' h → ' + nb(v.nuit.fin) + ' h' : 'surventilation nocturne désactivée');
   }
 
+  /* ---------- En tête des résultats : DH indicatifs, pics, origines de la chaleur, état initial ---------- */
+  function ecart(v, ref, dec, unite) {
+    if (ref === undefined || ref === null) return '';
+    const d = v - ref;
+    if (Math.abs(d) < Math.pow(10, -dec) / 2) return ' <em class="delta nul">=</em>';
+    return ' <em class="delta ' + (d < 0 ? 'mieux' : 'pire') + '">' + (d < 0 ? '−' : '+') + nb(Math.abs(d), dec) + unite + '</em>';
+  }
+  function dessinerKpi() {
+    const boite = $('#carte-kpi');
+    if (!boite) return;
+    const k = sim.kpi, o = sim.origines, r = reference;
+    const postes = [
+      { nom: 'Solaire par les vitrages', v: o.vitrages, c: 'ap-fen' }, { nom: 'Apports internes', v: o.internes, c: 'ap-int' },
+      { nom: 'Parois opaques au soleil', v: o.opaques, c: 'ap-op' }, { nom: 'Air extérieur chaud (ventilation, transmission)', v: o.air, c: 'ap-air' }
+    ];
+    let html = '<div class="carte kpi-carte"><div class="carte-titre"><h2>Confort d\'été</h2><span class="aide">juin → septembre · évolution libre</span></div>' +
+      '<div class="kpi-dh kpi-dh-' + k.repere.id + '"><div><span class="kpi-dh-val">' + nb(k.dh) + '</span> <small>°C·h</small>' + (r ? ecart(k.dh, r.kpi.dh, 0, ' DH') : '') + '</div>' +
+      '<b>' + esc(k.repere.nom) + '</b><span>Degrés-heures indicatifs (H) : au-dessus de ' + nb(k.seuils.jour) + ' °C le jour, ' + nb(k.seuils.nuit) + ' °C la nuit · repères 350 / 1 250</span></div>' +
+      '<div class="kpi-ligne"><div class="kpi-case"><span>T opérative max</span><b>' + nb(k.topMax, 1) + ' °C</b>' + (r ? ecart(k.topMax, r.kpi.topMax, 1, ' °C') : '') + '<small>' + dateHeure(k.iMax) + '</small></div>' +
+      '<div class="kpi-case"><span>T opérative max, la nuit</span><b>' + nb(k.topNuitMax, 1) + ' °C</b>' + (r ? ecart(k.topNuitMax, r.kpi.topNuitMax, 1, ' °C') : '') + '<small>' + nb(k.seuils.debutNuit) + ' h → ' + nb(k.seuils.finNuit) + ' h</small></div>' +
+      '<div class="kpi-case"><span>Heures au-dessus du seuil</span><b>' + nb(k.heuresAuDessus) + ' h</b>' + (r ? ecart(k.heuresAuDessus, r.kpi.heuresAuDessus, 0, ' h') : '') + '<small>sur ' + nb(k.heures) + '</small></div></div>';
+    html += '<h3 class="soleil-h3" style="margin-top:12px">Origine des apports de chaleur <small>' + nb(o.total) + ' kWh</small></h3>' +
+      '<div class="pile">' + postes.map(function (p) { return p.v > 0 ? '<i class="' + p.c + '" style="width:' + (p.v / o.total * 100).toFixed(2) + '%" title="' + esc(p.nom) + '"></i>' : ''; }).join('') + '</div>' +
+      '<div class="pile-legende">' + postes.map(function (p) { return '<span><i class="' + p.c + '"></i>' + esc(p.nom) + ' <b>' + nb(p.v) + '</b> · ' + nb(o.total > 0 ? p.v / o.total * 100 : 0) + ' %</span>'; }).join('') + '</div>';
+    html += '<div class="kpi-ref">' + (r
+      ? '<span>État initial figé : <b>' + nb(r.kpi.dh) + ' DH</b>, max ' + nb(r.kpi.topMax, 1) + ' °C <small>(' + esc(r.nom) + ')</small></span><button type="button" class="bouton discret" id="btn-ref-effacer">Effacer</button><button type="button" class="bouton" id="btn-ref-figer">Refiger</button>'
+      : '<button type="button" class="bouton principal" id="btn-ref-figer">Figer comme état initial</button><span class="aide">puis modifie le projet : les gains s\'affichent en direct.</span>') + '</div></div>';
+    boite.innerHTML = html;
+  }
+
   /* ---------- La carte du centre : la semaine la plus chaude, le labo, l'heure pas à pas ---------- */
   function dessinerCarte() {
     const A = window.ConfortApports;
     const d0 = semaine.debut / 24 + 1;
-    let html = '<div class="carte confort-carte"><div class="carte-titre"><h2>La température dedans, heure par heure</h2><span class="aide">modèle 5R1C · NF EN ISO 13790 annexe C (H)</span></div>';
-    html += '<p class="aide" style="margin:-2px 0 10px">La chaleur qui entre (étape 2) chauffe l\'air, les surfaces et la masse de la maison ; les parois, les fenêtres et l\'air renouvelé l\'évacuent. Le calcul tourne du 1er mai au 30 septembre, les bilans portent sur juin → septembre. <b>Rien ne chauffe ni ne climatise</b> : c\'est la maison livrée à elle-même.</p>';
+    let html = '<div class="carte confort-carte"><div class="carte-titre"><h2>Températures intérieures horaires</h2><span class="aide">modèle 5R1C · NF EN ISO 13790 annexe C</span></div>';
+    html += '<p class="aide" style="margin:-2px 0 10px">Simulation du 1er mai au 30 septembre (mise en régime en mai, bilans sur juin → septembre), en évolution libre : ni chauffage ni climatisation.</p>';
     html += '<h3 class="soleil-h3">La semaine la plus chaude <small>du ' + S.dateDuJour(d0).nom + ' au ' + S.dateDuJour(d0 + 6).nom + ' · T opérative = 0,3 air + 0,7 surfaces</small></h3><div id="graphe-temperatures-semaine"></div>';
-    html += '<div class="confort-essai"><span class="etiquette">Et si la maison était…</span><div class="segments" id="confort-paliers" role="group" aria-label="Masse de la maison">' +
+    html += '<div class="confort-essai"><span class="etiquette">Sensibilité à l\'inertie</span><div class="segments" id="confort-paliers" role="group" aria-label="Masse de la maison">' +
       PALIERS.map(function (p) { return '<button type="button" data-palier="' + p.id + '" aria-pressed="' + (p.id === facteurCm) + '">' + esc(p.nom) + '</button>'; }).join('') + '</div>' +
       '<span class="aide" id="confort-essai-texte"></span></div>';
-    html += '<h3 class="soleil-h3">Le labo : la masse qui respire <small>à l\'heure affichée · les niveaux sont des températures, les tuyaux des conductances H</small></h3>';
+    html += '<h3 class="soleil-h3">Réseau 5R1C à l\'heure affichée <small>analogie hydraulique : niveaux = températures, tuyaux = conductances H</small></h3>';
     html += '<div class="confort-labo" id="confort-labo"></div>';
     html += '<p class="aide" style="margin:6px 0 0">Le jour, le soleil et les occupants remplissent les surfaces et la masse ; l\'air suit. La nuit, la masse rend sa chaleur, et les fenêtres ouvertes la vident vers dehors. Plus le réservoir de masse est large (Cm), moins son niveau bouge.</p>';
     html += '<details class="detail-calcul soleil-pas"><summary id="confort-detail-titre">L\'heure affichée calculée pas à pas</summary><div class="formule" id="confort-detail"></div></details>';
-    html += '<p class="aide" style="margin:10px 0 0">Les coefficients 3,45 · 9,1 · 4,5 et le partage 0,3 / 0,7 sont ceux de l\'annexe C (H : à vérifier dans le texte). Sol sous la dalle, infiltrations n50/20 et gestion des fenêtres la nuit : hypothèses (H), voir Méthode § 28 à 35. Validation : bilan nul à chaque heure, cas analytiques, BESTEST 600FF / 900FF (indicatif).</p></div>';
+    html += '<p class="aide" style="margin:10px 0 0">Les coefficients 3,45 · 9,1 · 4,5 et le partage 0,3 / 0,7 sont ceux de l\'annexe C (H : à vérifier dans le texte). Sol sous la dalle, infiltrations n50/20 et gestion des fenêtres la nuit : hypothèses (H), voir Notice § 28 à 35. Validation : bilan nul à chaque heure, cas analytiques, BESTEST 600FF / 900FF (indicatif).</p></div>';
     $('#confort-projet').innerHTML = html;
 
     // Le graphique de la semaine : T ext en référence pointillée, air et opérative, l'essai en tirets.
@@ -146,6 +182,7 @@
       { nom: 'Air dedans', classe: 'gr-2', points: pts(sim.Tair) },
       { nom: 'Opérative (ressentie)', classe: 'gr-1', points: pts(sim.Top) }
     ];
+    if (reference && reference.Top.length === sim.Top.length) series.splice(1, 0, { nom: 'Opérative, état initial', classe: 'gr-init', points: pts(reference.Top) });
     if (essai) series.push({ nom: 'Opérative, maison ' + PALIERS.find(function (p) { return p.id === facteurCm; }).nom.toLowerCase(), classe: 'gr-essai', points: pts(essai.Top) });
     const options = {
       id: 'temperatures-semaine', titre: 'Températures pendant la semaine la plus chaude', unite: '°C', decimales: 1,
@@ -157,7 +194,7 @@
     if (svg) svg.insertAdjacentHTML('beforeend', '<line class="confort-curseur" x1="0" x2="0" y1="14" y2="216" visibility="hidden"/>');
     $('#confort-essai-texte').textContent = essai
       ? 'Pic ' + nb(essai.resume.top.max, 1) + ' °C au lieu de ' + nb(sim.resume.top.max, 1) + ' °C ; moyenne ' + nb(essai.resume.top.moyenne, 1) + ' au lieu de ' + nb(sim.resume.top.moyenne, 1) + ' °C. Cm × ' + nb(facteurCm, 1) + ', tout le reste pareil.'
-      : 'Clique pour changer seulement la masse Cm (chapitre 1 bis) et voir l\'inertie agir.';
+      : 'Modifie seulement la capacité Cm, toutes choses égales par ailleurs.';
   }
 
   /* ---------- La carte de droite : le résumé de l'été ---------- */
@@ -178,7 +215,7 @@
       }).join('') + '</div>';
     html += '<p class="aide" style="margin:10px 0 0">Air renouvelé : ' + nb(v.base, 2) + ' vol/h (VMC + infiltrations n50/20)' +
       (v.nuit && v.nuit.active ? ', + ' + nb(v.nuit.debit) + ' vol/h les nuits où il fait plus frais dehors (' + nb(z.nuits) + ' nuits)' : ', fenêtres fermées la nuit') +
-      '. Les indicateurs (heures > 28 °C, degrés-heures, adaptatif…) et la note arrivent à l\'étape 4.</p></div>';
+      '.</p></div>';
     boite.innerHTML = html;
   }
 
@@ -322,6 +359,11 @@
   document.addEventListener('confort:apports', calculer);
   document.addEventListener('confort:heure', dessinerHeure);
   document.addEventListener('click', function (ev) {
+    if (ev.target.closest('#btn-ref-figer') && sim) {
+      reference = { Top: Float64Array.from(sim.Top), kpi: sim.kpi, nom: (window.ConfortProjet.projet().nom || 'projet') + ', ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) };
+      toutDessiner(); return;
+    }
+    if (ev.target.closest('#btn-ref-effacer')) { reference = null; toutDessiner(); return; }
     const b = ev.target.closest('#confort-paliers button');
     if (!b) return;
     facteurCm = Number(b.dataset.palier);

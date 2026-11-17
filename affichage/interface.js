@@ -560,6 +560,8 @@
     onde: function () { return reglages.onde; },
     modifier: function (changer) { changer(paroi); apresModifParoi(true); },
     nature: function () { return natureParoi(paroi); },
+    // Le comparateur reprend une paroi figée dans l'éditeur (une copie : la paroi figée ne bouge pas).
+    remplacer: function (p) { paroi = BAO.cloner(p); apresModifParoi(true); },
     // Onglet « Ma paroi » : changer la nature garde les couches (on change le sens du flux et les résistances superficielles).
     choisirNature: function (n) {
       if (!NATURES[n]) return;

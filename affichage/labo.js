@@ -93,32 +93,15 @@
     const id = reglage.ville || (window.ConfortProjet ? window.ConfortProjet.projet().ville : null) || X.villeParDefaut;
     return V.villes.find(function (v) { return v.id === id; }) || V.villes[0];
   }
-  function jourDebut(m) {
-    if (reglage.debut === 'semaine') {
-      const s = So.semaineLaPlusChaude(m.T, (So.jourDeLAnnee(6, 1) - 1) * 24, So.jourDeLAnnee(9, 30) * 24);
-      return s.debut / 24 + 1;
-    }
-    return Number(reglage.debut);
+  // Les conditions communes (ville, période, orientation, pente, couleur) : lues aussi par le comparateur (affichage/comparateur.js).
+  function conditionsMeteo(m) {
+    const v = ville();
+    return { meteo: m, lieu: { lat: v.lat, lon: v.lon }, nature: A.nature(), orientation: Number(reglage.orientation), pente: Number(reglage.pente),
+      alpha: (X.couleurs.find(function (c) { return c.id === reglage.couleur; }) || X.couleurs[1]).alpha, debut: reglage.debut, jours: Number(reglage.jours), sol: X.sol, ville: v };
   }
   function scenarioMeteo(m) {
-    const nature = A.nature();
-    const v = ville(), j0 = jourDebut(m), jours = Number(reglage.jours);
-    const decal = So.decalageLegal(j0);
-    const k0 = (j0 - 1) * 24 - decal - PRECHAUFFAGE_JOURS * 24, k1 = k0 + PRECHAUFFAGE_JOURS * 24 + jours * 24 + 1;
-    const alpha = (X.couleurs.find(function (c) { return c.id === reglage.couleur; }) || X.couleurs[1]).alpha;
-    let valeurs;
-    if (nature === 'plancher') {
-      const sol = R5.temperatureSol(m.T, X.sol).serie;
-      valeurs = new Float64Array(k1 - k0);
-      for (let i = 0; i < valeurs.length; i++) valeurs[i] = sol[((k0 + i) % 8760 + 8760) % 8760];
-    } else {
-      const inclinaison = nature === 'toiture' ? Number(reglage.pente) : 90;
-      valeurs = So.serieSolAir(m, { lat: v.lat, lon: v.lon }, inclinaison, Number(reglage.orientation), alpha, k0, k1);
-    }
-    const air = new Float64Array(k1 - k0);
-    for (let i = 0; i < air.length; i++) air[i] = m.T[((k0 + i) % 8760 + 8760) % 8760];
-    return { type: 'serie', origine: -PRECHAUFFAGE_JOURS * 24, valeurs: valeurs, air: { type: 'serie', origine: -PRECHAUFFAGE_JOURS * 24, valeurs: air },
-      jourDebut: j0, ville: v, nature: nature, alpha: alpha, duree: jours * 24 };
+    const c = conditionsMeteo(m);
+    return Object.assign(window.ConfortComparaison.scenarioMeteoParoi(c), { ville: c.ville });
   }
 
   function lancerCalcul() {
@@ -162,7 +145,7 @@
     dessinerGraphe();
     dessinerTout();
     // L'onglet « Ma paroi » (affichage/paroi.js) lit la simulation pour le verdict.
-    document.dispatchEvent(new CustomEvent('confort:labo', { detail: { sim: sim, reglage: reglage } }));
+    document.dispatchEvent(new CustomEvent('confort:labo', { detail: { sim: sim, reglage: reglage, conditions: meteo ? conditionsMeteo(meteo) : null } }));
   }
   let attente = null;
   function recalculer() { clearTimeout(attente); attente = setTimeout(lancerCalcul, 120); }
@@ -705,6 +688,11 @@
     window.addEventListener('resize', function () { if (!enCours) { semerParticules(); dessinerScene(); } });
     document.querySelectorAll('[data-onglet="paroi"]').forEach(function (b) { b.addEventListener('click', function () { setTimeout(function () { semerParticules(); dessinerScene(); }, 0); }); });
   }
+
+  // Ce que le comparateur (affichage/comparateur.js) lit : les conditions communes, météo chargée.
+  window.ConfortLabo = {
+    conditions: function (suite) { const v = ville(); V.charger(v.id, function (m) { suite(conditionsMeteo(m)); }, VERSION); }
+  };
 
   lirePalette();
   dessinerPalette();

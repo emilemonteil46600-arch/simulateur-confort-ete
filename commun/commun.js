@@ -23,7 +23,8 @@
     'bao.confort.parois.v1': 'Confort d\'été — tes parois enregistrées',
     'bao.confort.local.v1': 'Confort d\'été — le local (inertie)',
     'bao.confort.materiaux.v1': 'Confort d\'été — ta bibliothèque de matériaux',
-    'bao.confort.reglages.v1': 'Confort d\'été — tes réglages (onde, seuils…)'
+    'bao.confort.reglages.v1': 'Confort d\'été — tes réglages (onde, seuils…)',
+    'bao.confort.comparaison.v1': 'Confort d\'été — ta comparaison de parois (existant et variantes)'
   };
 
   // Date de la dernière modification et du dernier export de chaque clé.

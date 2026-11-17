@@ -202,6 +202,26 @@ async function nouvellePage(navigateur, options) {
   await page.waitForTimeout(400);
   ok((await page.textContent('#labo-mesures')).includes('sol-air'), 'Retour à la vraie météo');
 
+  console.log('3 ter. Comparaison de parois');
+  await page.click('#btn-comparer-exemple');
+  await page.waitForSelector('#cmp-graphe svg.graphique');
+  const tableCmp = function () { return page.textContent('.cmp-table').then(function (t) { return t.replace(/\s/g, ' '); }); };
+  ok(await page.$$eval('#comparateur .cmp-colonne', function (c) { return c.length; }) === 3 && await page.$$eval('#cmp-graphe .gr-ligne', function (l) { return l.length; }) === 3, 'Exemple : 3 parois, 3 courbes');
+  ok((await tableCmp()).includes('61,7') && (await tableCmp()).includes('−59,5') && (await tableCmp()).includes('8,1'), 'Tableau : flux de pointe 61,7 W/m² pour le béton nu, κ1 −59,5 en ITI, face intérieure 8,1 °C l\'hiver');
+  await page.click('#cmp-courbes [data-courbe="flux"]');
+  ok((await page.getAttribute('#cmp-graphe svg.graphique', 'aria-label')).includes('Flux'), 'Bascule vers la courbe de flux');
+  await page.click('#cmp-courbes [data-courbe="tSi"]');
+  await page.click('#btn-comparer-ajouter');
+  await page.waitForFunction(function () { return document.querySelectorAll('#comparateur .cmp-colonne').length === 4; });
+  ok(await page.$eval('#btn-comparer-ajouter', function (b) { return b.disabled; }), 'Ajouter la paroi en cours : 4 parois, le bouton se grise');
+  await page.click('#comparateur .cmp-colonne[data-index="3"] [data-cmp="retirer"]');
+  await page.waitForFunction(function () { return document.querySelectorAll('#comparateur .cmp-colonne').length === 3; });
+  const [image] = await Promise.all([page.waitForEvent('download'), page.click('#btn-cmp-png')]);
+  ok(image.suggestedFilename() === 'comparaison-parois-face-interieure.png', 'Export du graphe en PNG');
+  await page.evaluate(function () { window.ConfortComparateur.remplirFiche(); });
+  const fiche = (await page.textContent('#fiche-impression')).replace(/\s/g, ' ');
+  ok(fiche.includes('Comparaison de parois') && fiche.includes('Matériaux') && fiche.includes('Limites') && fiche.includes('exemple (H)'), 'Fiche d\'une page : coupes, tableau, matériaux avec statut, méthode et limites');
+
   console.log('4. Méthode, lexique, Teste-toi');
   await page.click('[data-onglet="methode"]');
   const termes = await page.$$eval('#onglet-methode .terme', function (t) { return t.length; });
@@ -219,7 +239,7 @@ async function nouvellePage(navigateur, options) {
   const fichier = path.join(os.tmpdir(), sauvegarde.suggestedFilename());
   await sauvegarde.saveAs(fichier);
   const contenu = JSON.parse(fs.readFileSync(fichier, 'utf8'));
-  ok(contenu.format === 'bao-sauvegarde-complete' && contenu.donnees['bao.confort.paroi.v1'] && contenu.donnees['bao.confort.parois.v1'] && contenu.donnees['bao.confort.projet.v1'],
+  ok(contenu.format === 'bao-sauvegarde-complete' && contenu.donnees['bao.confort.paroi.v1'] && contenu.donnees['bao.confort.parois.v1'] && contenu.donnees['bao.confort.projet.v1'] && contenu.donnees['bao.confort.comparaison.v1'],
     'Sauvegarde complète : projet + paroi en cours + parois enregistrées (' + Object.keys(contenu.donnees).length + ' éléments)');
   await page.context().close();
 

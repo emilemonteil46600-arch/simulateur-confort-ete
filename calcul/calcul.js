@@ -43,6 +43,7 @@
     transitoire: transitoire,
     soleil: soleil,
     cinqR1C: cinqR1C,
+    comparaison: global.ConfortComparaison || (typeof require === 'function' ? require('./calcul-comparaison.js') : null),
     indicateurs: global.ConfortIndicateurs || (typeof require === 'function' ? require('./calcul-indicateurs.js') : null)
   };
 

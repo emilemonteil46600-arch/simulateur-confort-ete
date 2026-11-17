@@ -45,9 +45,14 @@ préconisations, validation, découpage en 8 étapes).
 
 ## Règles de fond
 
-1. **Quatre onglets (refonte « outil de BE » du 16/11/2026)** : **Bâtiment** (`calcul`, le 5R1C), **Paroi** (`paroi` : synthèse U, Δt, f, κ1,
-   coupe animée, verdict ; l'ancien atelier est dans le `<details id="paroi-details">` replié), **Matériaux & climat** (`donnees`),
+1. **Quatre onglets (refonte « outil de BE » du 16/11/2026)** : **Paroi** en premier (`paroi` : synthèse U, Δt, f, κ1, coupe animée, verdict,
+   **comparaison de parois** ; l'ancien atelier est dans le `<details id="paroi-details">` replié), **Bâtiment** (`calcul`, le 5R1C),
+   **Matériaux & climat** (`donnees`),
    **Notice** (`methode`). Les identifiants `data-onglet` n'ont pas changé.
+   **Cap du projet (décision d'Émile du 16/11/2026) : l'outil sert à COMPARER DES PAROIS, proprement.** Pléiades fait déjà le bâtiment
+   (STD, indicateurs de confort) : ne pas le refaire. L'onglet Bâtiment est gardé tel quel, sans nouveau développement. Abandonnés :
+   archétypes, tous les indicateurs de Pléiades (Givoni, PMV…), modes tertiaires, multizone, rapport Word, import d'exports Pléiades,
+   comparaison à des cas Pléiades. Projet personnel d'Émile (progression, CV, LinkedIn), pas un outil pour son employeur.
    **Ton de l'interface : logiciel de bureau d'études.** Pas de mention « étape N », « bientôt », « pour l'instant » dans l'écran ;
    les limites et hypothèses (H) restent, dans la Notice et à côté des valeurs.
 2. **Aucun chiffre sans source** : source, date, statut `exemple` / `valide`. Avertissement tant qu'une valeur est en `exemple`.
@@ -74,6 +79,8 @@ préconisations, validation, découpage en 8 étapes).
     calcul-5r1c.js            ch. 3 : modèle horaire 5R1C (ISO 13790 annexe C (H)) : conductances, répartition des apports,
                               pas de Crank-Nicolson, sol sous la dalle (H), ventilation + surventilation nocturne (H),
                               entreesMaison (depuis la synthèse du ch. 1 bis et les apports du ch. 2) (fait)
+    calcul-comparaison.js     comparer des parois (fait) : scénario météo commun (sol-air ou sol), pièce maintenue à 26 °C (H),
+                              évaluation d'une paroi (ISO 13786 + simulation), hiver (U, R, θsi par −5 / 20 °C (H)), tableau d'écarts
     calcul-indicateurs.js     ch. 4 (début, fait) : degrés-heures INDICATIFS (H : seuils fixes 28 / 26 °C, repères 350 / 1 250),
                               pics opératifs (jour, nuit), origine des apports ; à venir : adaptatif, PMV/PPD, Givoni, note
   affichage/                  projet.js (onglet Projet : saisie simple + résultat, AUCUN calcul),
@@ -82,7 +89,10 @@ préconisations, validation, découpage en 8 étapes).
                               labo.js (labo animé, dans l'onglet Ma paroi : mur en coupe, glisser-déposer, horloge, scénarios
                               « ☀ vraie météo » (sol-air du ch. 2 ou sol du ch. 3, via CONFORT_METEO_VILLES.charger), coup de chaud,
                               jour / nuit ; émet « confort:labo » ; AUCUN calcul),
-                              paroi.js (onglet Ma paroi : natures mur / toiture / plancher, modèles, verdict et repères (H) ; AUCUN calcul),
+                              paroi.js (onglet Paroi : natures mur / toiture / plancher, modèles, bandeau, verdict et repères (H) ; AUCUN calcul),
+                              comparateur.js (onglet Paroi : existant + variantes (copies figées, 4 au plus), graphe superposé, tableau
+                              d'écarts été / hiver, export PNG du graphe, fiche d'une page à imprimer ; lit window.ConfortLabo.conditions ;
+                              AUCUN calcul),
                               soleil.js (le soleil sur la maquette, barre jour · heure, cartes soleil et apports ; AUCUN calcul ;
                               lit l'état de projet.js via window.ConfortProjet et l'événement « confort:projet » ;
                               expose window.ConfortApports et émet « confort:apports » et « confort:heure »),
@@ -113,7 +123,8 @@ préconisations, validation, découpage en 8 étapes).
   `ventilation` {vmc, n50, nuit}, `usageLibre` {puissance, debut, fin, veille, weekend}),
   `bao.confort.paroi.v1` (dont `nature` : mur | toiture | plancher, devinée si absente), `bao.confort.parois.v1`, `bao.confort.local.v1`, `bao.confort.materiaux.v1`,
   `bao.confort.reglages.v1` (onde + types de fenêtres + `protections` + `seuilProtection` ; l'atelier et le projet y écrivent
-  chacun leur partie : toujours relire avant d'écrire) ; affichage seulement (hors sauvegarde) : `bao.confort.onglet`,
+  chacun leur partie : toujours relire avant d'écrire), `bao.confort.comparaison.v1` (parois figées de la comparaison, référence, courbe) ;
+  affichage seulement (hors sauvegarde) : `bao.confort.onglet`,
   `bao.confort.labo.affichage`, `bao.confort.soleil.affichage` (jour et heure affichés).
   Toute nouvelle clé de données va dans `BAO.CLES_DONNEES` (vérifié par `tests/commun.test.js`).
 - Sauvegarde complète et restauration : onglet Données › « Mes données ».
@@ -148,6 +159,8 @@ préconisations, validation, découpage en 8 étapes).
      Htr,em 62,74, Htr,w 18,2, Hve 50,4 W/K (0,7 vol/h), τ 20,3 h, juin → sept. **pic opératif 33,3 °C, moyenne 24,8 °C**
      (fenêtres ouvertes la nuit 3 vol/h) / 34,6 et 26,1 °C fenêtres fermées ; BESTEST 600FF (météo PVGIS Denver,
      `tests/references/pvgis-denver-tmy.json`, indicatif) dans les plages publiées (H), 900FF à ± 2,5 K ;
+   - comparaison (Toulouse, façade Ouest α 0,6, semaine du 14 juin, pièce à 26 °C) : béton 18 nu flux de pointe **61,7 W/m²**, face
+     intérieure 34,0 °C l'été et 8,1 °C l'hiver ; + PSE 14 : flux 2,4 à 3,5 W/m², κ1 14,4 (ITI, −59,5) / 75,8 (ITE), θsi hiver 19,2 °C ;
    - indicateurs : 4 h à 30 °C le jour = 8 DH ; maison d'exemple Toulouse **904 DH** (« Tolérable ») avec surventilation nocturne,
      2 442 sans (+ 1 538) ; charges libres 8 W/m², 8 h → 18 h, veille 10 % → 2,94 W/m² en moyenne ;
    - Teste-toi : 40 tirages par exercice.
@@ -200,6 +213,7 @@ préconisations, validation, découpage en 8 étapes).
 | 3. Moteur 5R1C | **Fait, en attente de l'accord d'Émile** (options conseillées retenues le 12/11 : VMC + n50/20, surventilation nocturne dès maintenant, sol = moyenne annuelle amortie (H), BESTEST avec météo PVGIS de Denver (indicatif), labo « réservoirs », canicule et sources reportées). Chapitre `calcul/calcul-5r1c.js`, saisie « 7. L'air », tuiles, carte « La température dedans » (semaine la plus chaude, « et si la maison était… », labo des réservoirs, heure pas à pas), pastille et vitres colorées sur la maquette, 🏠 dans la barre, carte « Températures d'été », Données. Méthode § 28 à 35 (circuit SVG, cours, exemple à la main), 3 exercices + 3 QCM, 9 mots de lexique, 11 tests. Fiche `docs/etape-3.md`. |
 | Ma paroi (demande du 12/11) | **Fait, en attente de l'accord d'Émile.** Onglet simple entre Projet et Atelier : 3 natures (mur / toiture / plancher bas, même paroi que l'atelier), modèles de départ, le labo animé déplacé ici avec le scénario « ☀ vraie météo » (ville PVGIS, début, jours, orientation, pente, couleur α → température sol-air ; plancher → sol sous la dalle ; air neuf = air réel), carte « Confort d'été de cette paroi » (verdict, 6 repères (H), conseils). Méthode § 36, Données (repères), fiche `docs/ma-paroi.md`, 4 tests. |
 | Refonte « outil de BE » (16/11, plan d'audit de Gemini validé par Émile) | **Fait, en attente de l'accord d'Émile.** 4 onglets (Bâtiment · Paroi · Matériaux & climat · Notice), atelier fusionné dans Paroi (bandeau U / Δt / f / κ1, détails repliés), wording professionnel, carte « Confort d'été » en tête (DH indicatifs (H), T op max, T op max de nuit, origine des apports), bouton « Figer comme état initial » (écarts en direct, courbe initiale en pointillés ; en mémoire le temps de la visite), charges internes en saisie libre (`projet.usageLibre`). Notice § 37. Ajustements par rapport au plan de Gemini : DH « indicatifs », jamais « conforme » ; limites (H) conservées ; les apports internes existaient déjà. |
-| Visuel (demande du 06/11) | En partie couvert par la refonte du 16/11. Reste possible : embellir la saisie et la maquette. À confirmer avec Émile. |
+| Comparateur de parois (16/11, nouveau cap) | **Fait, en attente de l'accord d'Émile.** Bouton « Ajouter à la comparaison », carte « Comparaison de parois » (existant en gris pointillé + 3 variantes, coupes, conditions communes, courbe face intérieure / flux, tableau d'écarts été · hiver · mise en œuvre), export PNG, fiche d'une page (matériaux avec source et statut, méthode, limites), exemple béton nu / ITI / ITE. Onglet Paroi en premier. Notice § 38, fiche `docs/comparateur.md`, 4 tests. |
+| Suite possible, à décider avec Émile | Bibliothèque de matériaux sourcée (remplacer les valeurs d'exemple), dupliquer une variante en un clic, condensation (Glaser), coût par variante. Ne rien lancer sans son accord. |
 | Décisions ouvertes | Canicule (PVGIS années réelles sans humidité : humidité estimée (H), autre source, ou attendre l'étape 4) ; sources pour remplacer les valeurs d'exemple (Fc, seuil 200 W/m², apports internes, matériaux, ventilation) ; valeurs de l'annexe C et plages BESTEST à vérifier dans les textes. Émile n'a pas encore répondu aux 3 questions des étapes 1 à 3. |
 | 4 à 7 | À faire, dans l'ordre du cahier des charges. |
